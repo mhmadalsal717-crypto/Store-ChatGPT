@@ -116,7 +116,7 @@ _Select your plan:_`,
     choose_payment: (plan) =>
 `💳 *Select Payment Method*
 ━━━━━━━━━━━━━━━━━━
-${plan.emoji} *${plan.service}*  ·  _${plan.period}_
+${plan.emoji} *${plan.service}* ·  _${plan.period}_
 💰 *Price:* ${plan.amount} ⭐
 ━━━━━━━━━━━━━━━━━━
 _Choose how you'd like to pay:_`,
@@ -148,8 +148,8 @@ _Guaranteed if the issue is on our end._
 ━━━━━━━━━━━━━━━━━━
 _Our team is always here for you._
 
-👤 *Direct support:*  ${PAYMENT_INFO.support}
-⏰ *Availability:*  24 / 7
+👤 *Direct support:* ${PAYMENT_INFO.support}
+⏰ *Availability:* 24 / 7
 
 _Don't hesitate to reach out for any question or issue._
 ━━━━━━━━━━━━━━━━━━`,
@@ -239,11 +239,11 @@ _⚡ Activation within minutes after verification._`,
 ⚠️ _Ethereum gas fees apply._`,
 
     orders_empty: `📦 *My Orders*\n━━━━━━━━━━━━━━━━━━\n_You haven't placed any orders yet._\n\nBrowse our products to get started! 🛒`,
-    orders_title: (n) => `📦 *My Orders*  ·  _last ${n}_\n━━━━━━━━━━━━━━━━━━\n`,
+    orders_title: (n) => `📦 *My Orders* ·  _last ${n}_\n━━━━━━━━━━━━━━━━━━\n`,
     order_row: (o, i) => {
       const icon  = { pending: '🕐', approved: '✅', rejected: '❌' }[o.status] || '❓';
       const label = { pending: 'Pending Review', approved: 'Activated', rejected: 'Rejected' }[o.status] || o.status;
-      return `*${i+1}.*  Order *#${o.id}*\n     ${icon}  _${label}_\n     💰  *${o.payment_amount} ⭐*\n     📅  ${new Date(o.created_at).toLocaleDateString('en-GB')}\n\n`;
+      return `*${i+1}.* Order *#${o.id}*\n     ${icon}  _${label}_\n     💰  *${o.payment_amount} ⭐*\n     📅  ${new Date(o.created_at).toLocaleDateString('en-GB')}\n\n`;
     },
 
     pay_received: `✅ *Payment Received!*\n━━━━━━━━━━━━━━━━━━\n📧 _Please enter the email linked to your account for activation:_\n\n⚠️ _Double-check your email — incorrect entries cannot be corrected._`,
@@ -330,7 +330,7 @@ _اختر الباقة:_`,
     choose_payment: (plan) =>
 `💳 *اختر طريقة الدفع*
 ━━━━━━━━━━━━━━━━━━
-${plan.emoji} *${plan.service}*  ·  _${plan.period_ar}_
+${plan.emoji} *${plan.service}* ·  _${plan.period_ar}_
 💰 *السعر:* ${plan.amount} ⭐
 ━━━━━━━━━━━━━━━━━━
 _اختر طريقة الدفع المناسبة:_`,
@@ -362,8 +362,8 @@ _مضمون إذا كانت المشكلة من جهتنا._
 ━━━━━━━━━━━━━━━━━━
 _فريقنا دائماً هنا لمساعدتك._
 
-👤 *الدعم المباشر:*  ${PAYMENT_INFO.support}
-⏰ *التوفر:*  24 / 7
+👤 *الدعم المباشر:* ${PAYMENT_INFO.support}
+⏰ *التوفر:* 24 / 7
 
 _لا تتردد في التواصل لأي استفسار أو مشكلة._
 ━━━━━━━━━━━━━━━━━━`,
@@ -453,11 +453,11 @@ _⚡ تفعيل خلال دقائق بعد التحقق._`,
 ⚠️ _رسوم الغاز مطبقة على شبكة Ethereum._`,
 
     orders_empty: `📦 *طلباتي*\n━━━━━━━━━━━━━━━━━━\n_لا توجد طلبات بعد._\n\nتصفح المنتجات للبدء! 🛒`,
-    orders_title: (n) => `📦 *طلباتي*  ·  _آخر ${n}_\n━━━━━━━━━━━━━━━━━━\n`,
+    orders_title: (n) => `📦 *طلباتي* ·  _آخر ${n}_\n━━━━━━━━━━━━━━━━━━\n`,
     order_row: (o, i) => {
       const icon  = { pending: '🕐', approved: '✅', rejected: '❌' }[o.status] || '❓';
       const label = { pending: 'قيد المراجعة', approved: 'مفعّل', rejected: 'مرفوض' }[o.status] || o.status;
-      return `*${i+1}.*  طلب *#${o.id}*\n     ${icon}  _${label}_\n     💰  *${o.payment_amount} ⭐*\n     📅  ${new Date(o.created_at).toLocaleDateString('ar-SA')}\n\n`;
+      return `*${i+1}.* طلب *#${o.id}*\n     ${icon}  _${label}_\n     💰  *${o.payment_amount} ⭐*\n     📅  ${new Date(o.created_at).toLocaleDateString('ar-SA')}\n\n`;
     },
 
     pay_received: `✅ *تم استلام الدفع!*\n━━━━━━━━━━━━━━━━━━\n📧 _أدخل الإيميل المرتبط بحسابك للتفعيل:_\n\n⚠️ _تأكد من صحة الإيميل — لا يمكن تصحيحه لاحقاً._`,
@@ -619,7 +619,7 @@ bot.action('cat_youtube', async (ctx) => {
   await ctx.answerCbQuery();
   const lang = getLang(ctx.from.id);
   try { await ctx.deleteMessage(); } catch (_) {}
-  await ctx.replyWithPhoto('AgACAgEAAxkBAAFFYSZpvxhcfwvMfkT1uO3pFCI38PfqEQAC3AtrGxjM-UU6VQmt4eB16gEAAwIAA3gAAzoE', {
+  await ctx.replyWithPhoto('https://upload.wikimedia.org/wikipedia/commons/thumb/b/b8/YouTube_Logo_2017.svg/512px-YouTube_Logo_2017.svg.png', {
     caption: T[lang].youtube_info,
     parse_mode: 'Markdown',
     reply_markup: kb.youtube(lang).reply_markup,
@@ -629,7 +629,7 @@ bot.action('cat_netflix', async (ctx) => {
   await ctx.answerCbQuery();
   const lang = getLang(ctx.from.id);
   try { await ctx.deleteMessage(); } catch (_) {}
-  await ctx.replyWithPhoto('AgACAgEAAxkBAAFFYSdpvxhcsW4VFjuRG6X57dGUpSYydwAC3QtrGxjM-UW-Mhm3bMcksQEAAwIAA3gAAzoE', {
+  await ctx.replyWithPhoto('https://upload.wikimedia.org/wikipedia/commons/thumb/0/08/Netflix_2015_logo.svg/512px-Netflix_2015_logo.svg.png', {
     caption: T[lang].netflix_info,
     parse_mode: 'Markdown',
     reply_markup: kb.netflix(lang).reply_markup,
@@ -639,7 +639,7 @@ bot.action('cat_shahid', async (ctx) => {
   await ctx.answerCbQuery();
   const lang = getLang(ctx.from.id);
   try { await ctx.deleteMessage(); } catch (_) {}
-  await ctx.replyWithPhoto('AgACAgEAAxkBAAFFYSVpvxhcvfPUnOxgOnDf8rF_qsUwkgAC2wtrGxjM-UVDOdz_nBvY-AEAAwIAA3gAAzoE', {
+  await ctx.replyWithPhoto('https://upload.wikimedia.org/wikipedia/ar/2/25/Shahid_VOD_logo.png', {
     caption: T[lang].shahid_info,
     parse_mode: 'Markdown',
     reply_markup: kb.shahid(lang).reply_markup,
