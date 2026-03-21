@@ -2,23 +2,14 @@ const { Telegraf, Markup } = require('telegraf');
 const supabase = require('./supabase');
 require('dotenv').config();
 
-if (!process.env.BOT_TOKEN) {
-  console.error('❌ ERROR: BOT_TOKEN is missing!');
-  process.exit(1);
-}
+if (!process.env.BOT_TOKEN) { console.error('❌ BOT_TOKEN missing!'); process.exit(1); }
 
 let bot;
-try {
-  bot = new Telegraf(process.env.BOT_TOKEN);
-  console.log('✅ Bot initialized successfully');
-} catch (error) {
-  console.error('❌ Bot init error:', error.message);
-  process.exit(1);
-}
+try { bot = new Telegraf(process.env.BOT_TOKEN); }
+catch (e) { console.error('❌ Bot init error:', e.message); process.exit(1); }
 
 const FOUNDER_ID = parseInt(process.env.FOUNDER_ID) || 0;
 
-// ─── Payment Info ─────────────────────────────────────────────
 const PAYMENT_INFO = {
   binance_id: '815791123',
   usdt_trc20: 'TN8bezRsWbVEFEp21fghdstLA2oxCU9B4A',
@@ -27,762 +18,596 @@ const PAYMENT_INFO = {
   support: '@XBLLT',
 };
 
-// ─── State Maps ───────────────────────────────────────────────
-const pendingEmailEntries = new Map();  // userId -> subscriptionId (after Stars payment)
-const pendingManualPayment = new Map(); // userId -> { plan, method } (after manual payment selection)
+// ─── State ────────────────────────────────────────────────────
+const verifiedUsers = new Set();
+const userLang      = new Map(); // userId -> 'en' | 'ar'
+const pendingEmail  = new Map();
 const userInfoCache = new Map();
 const broadcastMode = new Map();
 
-// ─── Plans ────────────────────────────────────────────────────
-const plans = {
-  youtube_month: { title: 'YouTube Premium - 1 Month', description: 'YouTube Premium for 1 month', amount: 300, label: '▶️ YouTube Premium — شهر' },
-  youtube_year:  { title: 'YouTube Premium - 1 Year',  description: 'YouTube Premium for 1 year',  amount: 1000, label: '▶️ YouTube Premium — سنة' },
-  netflix_month: { title: 'Netflix Premium - 1 Month', description: 'Netflix Premium for 1 month', amount: 350, label: '🎬 Netflix Premium — شهر' },
-  netflix_year:  { title: 'Netflix Premium - 1 Year',  description: 'Netflix Premium for 1 year',  amount: 1000, label: '🎬 Netflix Premium — سنة' },
-  shahid_month:  { title: 'Shahid Plus - 1 Month',     description: 'Shahid Plus for 1 month',     amount: 200, label: '🎥 Shahid Plus — شهر' },
-  shahid_year:   { title: 'Shahid Plus - 1 Year',      description: 'Shahid Plus for 1 year',      amount: 600, label: '🎥 Shahid Plus — سنة' },
+// ─── Language Helper ──────────────────────────────────────────
+const getLang = (userId) => userLang.get(userId) || 'en';
+
+// ─── Translations ─────────────────────────────────────────────
+const T = {
+  en: {
+    verify_prompt:   `👋 *Welcome!*\n\nBefore we get started, please confirm you're human.`,
+    verify_btn:      `✅  I'm not a robot`,
+    verify_success:  `✅ *Verified!* Welcome to the store.`,
+    main_text:       (name) => `🌟 *Digital Subscriptions Store*\n\nHey ${name}!\n\nGet premium services at competitive prices with instant activation.\n\n_Choose an option below:_`,
+    products:        `🛒  Products`,
+    my_orders:       `📦  My Orders`,
+    faq:             `❓  FAQ`,
+    support_btn:     `💬  Support`,
+    payments_btn:    `💳  Payments`,
+    switch_lang:     `🌐  العربية`,
+    browse:          `🛒 *Products*\n\nSelect a service:`,
+    youtube_desc:    `▶️ *YouTube Premium*\n\n• Ad-free videos & music\n• Background playback\n• YouTube Originals\n• All devices\n\nSelect your plan:`,
+    netflix_desc:    `🎬 *Netflix Premium*\n\n• 4K Ultra HD\n• 4 screens at once\n• Thousands of titles\n• Offline downloads\n\nSelect your plan:`,
+    shahid_desc:     `🎥 *Shahid Plus*\n\n• Exclusive Arabic content\n• Live sports & events\n• All devices\n• HD quality\n\nSelect your plan:`,
+    plan_month:      (p) => `📅  1 Month  —  ${p} ⭐`,
+    plan_year:       (p) => `📆  1 Year   —  ${p} ⭐`,
+    back:            `‹  Back`,
+    back_menu:       `‹  Back to Menu`,
+    faq_text:        `❓ *FAQ*\n\n*How do I pay?*\nTelegram Stars, Binance Pay, or USDT.\n\n*When is activation?*\nWithin minutes after review.\n\n*What after payment?*\nProvide your email and we'll handle the rest.\n\n*Is it secure?*\nYes, 100%.\n\n*Issues?*\nContact ${PAYMENT_INFO.support} — we reply instantly.\n\n*Refunds?*\nGuaranteed if the issue is on our end.`,
+    support_text:    `💬 *Support*\n\n👤 ${PAYMENT_INFO.support}\n⏰ Available 24/7\n\n_Reach out for any question or issue._`,
+    payments_text:   `💳 *Payment Methods*\n\nChoose your preferred method:`,
+    stars_text:      `⭐ *Telegram Stars*\n\nFastest & most secure — directly through Telegram.\n\n*Steps:*\n1. Browse Products\n2. Pick a plan\n3. Tap Pay on the invoice\n4. Enter your email\n5. Done ✅`,
+    binance_text:    `🟡 *Binance Pay*\n\n*ID:* \`${PAYMENT_INFO.binance_id}\`\n\n*Steps:*\n1. Binance → Pay → Send\n2. Enter ID above\n3. Enter amount\n4. Screenshot the receipt\n5. Send to ${PAYMENT_INFO.support} with email & plan`,
+    usdt_text:       `💠 *USDT Crypto*\n\nSelect network:`,
+    trc20_text:      `🔵 *USDT · TRC20*\n\n\`${PAYMENT_INFO.usdt_trc20}\`\n\nSend USDT on TRC20, screenshot TX, send to ${PAYMENT_INFO.support}.\n\n⚠️ _TRC20 network only._`,
+    bep20_text:      `🟡 *USDT · BEP20*\n\n\`${PAYMENT_INFO.usdt_bep20}\`\n\nSend USDT on BEP20 (BSC), screenshot TX, send to ${PAYMENT_INFO.support}.\n\n⚠️ _BEP20 network only._`,
+    erc20_text:      `🔷 *USDT · ERC20*\n\n\`${PAYMENT_INFO.usdt_erc20}\`\n\nSend USDT on ERC20, screenshot TX, send to ${PAYMENT_INFO.support}.\n\n⚠️ _Gas fees apply._`,
+    orders_empty:    `📦 *My Orders*\n\nNo orders yet. Browse our products to get started! 🛒`,
+    orders_title:    (n) => `📦 *My Orders*  _(last ${n})_\n\n`,
+    order_row:       (o, i) => {
+      const icon = { pending: '🕐', approved: '✅', rejected: '❌' }[o.status] || '❓';
+      const label = { pending: 'Pending', approved: 'Activated', rejected: 'Rejected' }[o.status] || o.status;
+      return `*${i + 1}.  Order #${o.id}*\n   ${icon}  ${label}\n   💰  ${o.payment_amount} ⭐\n   📅  ${new Date(o.created_at).toLocaleDateString('en-GB')}\n\n`;
+    },
+    pay_received:    `✅ *Payment received!*\n\nPlease enter the email linked to your account for activation:\n\n_⚠️ Double-check — incorrect emails cannot be corrected._`,
+    email_invalid:   `❌ Invalid email. Try again.\nExample: name@gmail.com`,
+    email_saved:     `✅ *All set!*\n\nYour order is under review. Activation usually takes a few minutes.\n\nTrack it with /orders 📦`,
+    proof_received:  `✅ *Proof received!*\n\nOur team will verify and activate your subscription shortly.\n\n_For updates: ${PAYMENT_INFO.support}_`,
+    activated:       `✅ *Subscription Activated!*\n\nCheck your inbox for the activation email and follow the instructions.\n\nEnjoy! 🎉`,
+    rejected_msg:    `❌ *Order Rejected*\n\nContact ${PAYMENT_INFO.support} for assistance.`,
+  },
+
+  ar: {
+    verify_prompt:   `👋 *أهلاً!*\n\nقبل البدء، تأكد أنك لست روبوت.`,
+    verify_btn:      `✅  لست روبوت`,
+    verify_success:  `✅ *تم التحقق!* أهلاً بك في المتجر.`,
+    main_text:       (name) => `🌟 *متجر الاشتراكات الرقمية*\n\nأهلاً ${name}!\n\nاحصل على أفضل الاشتراكات بأسعار تنافسية وتفعيل فوري.\n\n_اختر من القائمة:_`,
+    products:        `🛒  المنتجات`,
+    my_orders:       `📦  طلباتي`,
+    faq:             `❓  أسئلة شائعة`,
+    support_btn:     `💬  الدعم`,
+    payments_btn:    `💳  طرق الدفع`,
+    switch_lang:     `🌐  English`,
+    browse:          `🛒 *المنتجات*\n\nاختر الخدمة:`,
+    youtube_desc:    `▶️ *YouTube Premium*\n\n• بدون إعلانات\n• تشغيل في الخلفية\n• محتوى حصري\n• جميع الأجهزة\n\nاختر الباقة:`,
+    netflix_desc:    `🎬 *Netflix Premium*\n\n• جودة 4K Ultra HD\n• 4 شاشات في آن واحد\n• آلاف الأفلام والمسلسلات\n• تحميل للمشاهدة دون إنترنت\n\nاختر الباقة:`,
+    shahid_desc:     `🎥 *Shahid Plus*\n\n• مسلسلات عربية حصرية\n• رياضة مباشرة\n• جميع الأجهزة\n• جودة HD\n\nاختر الباقة:`,
+    plan_month:      (p) => `📅  شهر واحد  —  ${p} ⭐`,
+    plan_year:       (p) => `📆  سنة كاملة  —  ${p} ⭐`,
+    back:            `‹  رجوع`,
+    back_menu:       `‹  القائمة الرئيسية`,
+    faq_text:        `❓ *أسئلة شائعة*\n\n*كيف أدفع؟*\nTelegram Stars أو Binance Pay أو USDT.\n\n*متى يتم التفعيل؟*\nخلال دقائق بعد المراجعة.\n\n*ماذا بعد الدفع؟*\nأدخل إيميلك وسنتولى الباقي.\n\n*هل الدفع آمن؟*\nنعم، 100%.\n\n*مشكلة؟*\nتواصل مع ${PAYMENT_INFO.support} — نرد فوراً.\n\n*استرداد؟*\nمضمون إذا كانت المشكلة من جهتنا.`,
+    support_text:    `💬 *الدعم*\n\n👤 ${PAYMENT_INFO.support}\n⏰ متاح 24/7\n\n_تواصل معنا لأي استفسار._`,
+    payments_text:   `💳 *طرق الدفع*\n\nاختر الطريقة المناسبة:`,
+    stars_text:      `⭐ *Telegram Stars*\n\nالأسرع والأكثر أماناً — مباشرة عبر تلغرام.\n\n*الخطوات:*\n1. تصفح المنتجات\n2. اختر الباقة\n3. اضغط دفع على الفاتورة\n4. أدخل إيميلك\n5. تم ✅`,
+    binance_text:    `🟡 *Binance Pay*\n\n*ID:* \`${PAYMENT_INFO.binance_id}\`\n\n*الخطوات:*\n1. Binance ← Pay ← Send\n2. أدخل الـ ID أعلاه\n3. أدخل المبلغ\n4. خذ سكرين شوت\n5. أرسله لـ ${PAYMENT_INFO.support} مع إيميلك والباقة`,
+    usdt_text:       `💠 *USDT*\n\nاختر الشبكة:`,
+    trc20_text:      `🔵 *USDT · TRC20*\n\n\`${PAYMENT_INFO.usdt_trc20}\`\n\nأرسل USDT على TRC20، خذ سكرين شوت، أرسله لـ ${PAYMENT_INFO.support}.\n\n⚠️ _شبكة TRC20 فقط._`,
+    bep20_text:      `🟡 *USDT · BEP20*\n\n\`${PAYMENT_INFO.usdt_bep20}\`\n\nأرسل USDT على BEP20، خذ سكرين شوت، أرسله لـ ${PAYMENT_INFO.support}.\n\n⚠️ _شبكة BEP20 فقط._`,
+    erc20_text:      `🔷 *USDT · ERC20*\n\n\`${PAYMENT_INFO.usdt_erc20}\`\n\nأرسل USDT على ERC20، خذ سكرين شوت، أرسله لـ ${PAYMENT_INFO.support}.\n\n⚠️ _رسوم الغاز مطبقة._`,
+    orders_empty:    `📦 *طلباتي*\n\nلا توجد طلبات بعد. تصفح المنتجات للبدء! 🛒`,
+    orders_title:    (n) => `📦 *طلباتي*  _(آخر ${n})_\n\n`,
+    order_row:       (o, i) => {
+      const icon = { pending: '🕐', approved: '✅', rejected: '❌' }[o.status] || '❓';
+      const label = { pending: 'قيد المراجعة', approved: 'مفعّل', rejected: 'مرفوض' }[o.status] || o.status;
+      return `*${i + 1}.  طلب #${o.id}*\n   ${icon}  ${label}\n   💰  ${o.payment_amount} ⭐\n   📅  ${new Date(o.created_at).toLocaleDateString('ar-SA')}\n\n`;
+    },
+    pay_received:    `✅ *تم استلام الدفع!*\n\nأدخل الإيميل المرتبط بحسابك للتفعيل:\n\n_⚠️ تأكد من صحة الإيميل — لا يمكن تصحيحه لاحقاً._`,
+    email_invalid:   `❌ إيميل غير صحيح. حاول مجدداً.\nمثال: name@gmail.com`,
+    email_saved:     `✅ *تم!*\n\nطلبك قيد المراجعة. التفعيل عادةً خلال دقائق.\n\nتابع طلبك عبر /orders 📦`,
+    proof_received:  `✅ *تم استلام إثبات الدفع!*\n\nسيراجعه فريقنا ويفعّل اشتراكك قريباً.\n\n_للمتابعة: ${PAYMENT_INFO.support}_`,
+    activated:       `✅ *تم تفعيل اشتراكك!*\n\nتحقق من بريدك الإلكتروني واتبع تعليمات التفعيل.\n\nبتوفيق! 🎉`,
+    rejected_msg:    `❌ *تم رفض الطلب*\n\nتواصل مع ${PAYMENT_INFO.support} للاستفسار.`,
+  },
 };
 
-// ─── Keyboards ───────────────────────────────────────────────
+// ─── Plans ────────────────────────────────────────────────────
+const PLANS = {
+  youtube_month: { title: 'YouTube Premium · 1 Month', description: 'YouTube Premium for 1 month.', amount: 300  },
+  youtube_year:  { title: 'YouTube Premium · 1 Year',  description: 'YouTube Premium for 1 year.',  amount: 1000 },
+  netflix_month: { title: 'Netflix Premium · 1 Month', description: 'Netflix Premium for 1 month.', amount: 350  },
+  netflix_year:  { title: 'Netflix Premium · 1 Year',  description: 'Netflix Premium for 1 year.',  amount: 1000 },
+  shahid_month:  { title: 'Shahid Plus · 1 Month',     description: 'Shahid Plus for 1 month.',     amount: 200  },
+  shahid_year:   { title: 'Shahid Plus · 1 Year',      description: 'Shahid Plus for 1 year.',      amount: 600  },
+};
 
-const mainKeyboard = Markup.inlineKeyboard([
-  [Markup.button.callback('🛍️ المنتجات', 'section_products')],
-  [Markup.button.callback('📦 طلباتي', 'my_orders'), Markup.button.callback('❓ أسئلة شائعة', 'faq')],
-  [Markup.button.callback('💬 تواصل معنا', 'support'), Markup.button.callback('💳 طرق الدفع', 'payment_methods')],
-]);
+// ─── Keyboard Builder ─────────────────────────────────────────
+const kb = {
+  verify:    (lang) => Markup.inlineKeyboard([[Markup.button.callback(T[lang].verify_btn, 'verify_human')]]),
+  main:      (lang) => Markup.inlineKeyboard([
+    [Markup.button.callback(T[lang].products,     'nav_products')],
+    [Markup.button.callback(T[lang].my_orders,    'nav_orders'),  Markup.button.callback(T[lang].faq,          'nav_faq')],
+    [Markup.button.callback(T[lang].support_btn,  'nav_support'), Markup.button.callback(T[lang].payments_btn, 'nav_payments')],
+    [Markup.button.callback(T[lang].switch_lang,  'switch_lang')],
+  ]),
+  products:  (lang) => Markup.inlineKeyboard([
+    [Markup.button.callback('▶️  YouTube Premium', 'cat_youtube')],
+    [Markup.button.callback('🎬  Netflix Premium', 'cat_netflix')],
+    [Markup.button.callback('🎥  Shahid Plus',      'cat_shahid')],
+    [Markup.button.callback(T[lang].back, 'nav_main')],
+  ]),
+  youtube:   (lang) => Markup.inlineKeyboard([
+    [Markup.button.callback(T[lang].plan_month(300),  'buy_youtube_month')],
+    [Markup.button.callback(T[lang].plan_year(1000),  'buy_youtube_year')],
+    [Markup.button.callback(T[lang].back, 'nav_products')],
+  ]),
+  netflix:   (lang) => Markup.inlineKeyboard([
+    [Markup.button.callback(T[lang].plan_month(350),  'buy_netflix_month')],
+    [Markup.button.callback(T[lang].plan_year(1000),  'buy_netflix_year')],
+    [Markup.button.callback(T[lang].back, 'nav_products')],
+  ]),
+  shahid:    (lang) => Markup.inlineKeyboard([
+    [Markup.button.callback(T[lang].plan_month(200), 'buy_shahid_month')],
+    [Markup.button.callback(T[lang].plan_year(600),  'buy_shahid_year')],
+    [Markup.button.callback(T[lang].back, 'nav_products')],
+  ]),
+  backMain:  (lang) => Markup.inlineKeyboard([[Markup.button.callback(T[lang].back_menu, 'nav_main')]]),
+  payments:  (lang) => Markup.inlineKeyboard([
+    [Markup.button.callback('⭐  Telegram Stars', 'pm_stars')],
+    [Markup.button.callback('🟡  Binance Pay',    'pm_binance')],
+    [Markup.button.callback('💠  USDT Crypto',    'pm_usdt')],
+    [Markup.button.callback(T[lang].back, 'nav_main')],
+  ]),
+  usdt:      (lang) => Markup.inlineKeyboard([
+    [Markup.button.callback('🔵  USDT · TRC20', 'pm_trc20')],
+    [Markup.button.callback('🟡  USDT · BEP20', 'pm_bep20')],
+    [Markup.button.callback('🔷  USDT · ERC20', 'pm_erc20')],
+    [Markup.button.callback(T[lang].back, 'nav_payments')],
+  ]),
+  backPayments: (lang) => Markup.inlineKeyboard([[Markup.button.callback(T[lang].back, 'nav_payments')]]),
+  backUsdt:     (lang) => Markup.inlineKeyboard([[Markup.button.callback(T[lang].back, 'pm_usdt')]]),
+  starsBack:    (lang) => Markup.inlineKeyboard([
+    [Markup.button.callback('🛒  ' + (lang === 'ar' ? 'تصفح المنتجات' : 'Browse Products'), 'nav_products')],
+    [Markup.button.callback(T[lang].back, 'nav_payments')],
+  ]),
+};
 
-const productsKeyboard = Markup.inlineKeyboard([
-  [Markup.button.callback('▶️ YouTube Premium', 'section_youtube')],
-  [Markup.button.callback('🎬 Netflix Premium', 'section_netflix')],
-  [Markup.button.callback('🎥 Shahid Plus', 'section_shahid')],
-  [Markup.button.callback('🔙 رجوع', 'back_main')],
-]);
-
-const youtubeKeyboard = Markup.inlineKeyboard([
-  [Markup.button.callback('📅 شهر واحد — 300 ⭐', 'buy_youtube_month')],
-  [Markup.button.callback('📆 سنة كاملة — 1000 ⭐', 'buy_youtube_year')],
-  [Markup.button.callback('🔙 رجوع', 'section_products')],
-]);
-
-const netflixKeyboard = Markup.inlineKeyboard([
-  [Markup.button.callback('📅 شهر واحد — 350 ⭐', 'buy_netflix_month')],
-  [Markup.button.callback('📆 سنة كاملة — 1000 ⭐', 'buy_netflix_year')],
-  [Markup.button.callback('🔙 رجوع', 'section_products')],
-]);
-
-const shahidKeyboard = Markup.inlineKeyboard([
-  [Markup.button.callback('📅 شهر واحد — 200 ⭐', 'buy_shahid_month')],
-  [Markup.button.callback('📆 سنة كاملة — 600 ⭐', 'buy_shahid_year')],
-  [Markup.button.callback('🔙 رجوع', 'section_products')],
-]);
-
-const backMainKeyboard = Markup.inlineKeyboard([
-  [Markup.button.callback('🔙 القائمة الرئيسية', 'back_main')],
-]);
-
-const adminKeyboard = Markup.inlineKeyboard([
-  [Markup.button.callback('📊 الإحصائيات', 'admin_stats')],
-  [Markup.button.callback('📢 رسالة للكل (Broadcast)', 'admin_broadcast')],
-  [Markup.button.callback('🔙 رجوع', 'back_main')],
-]);
-
-const paymentMethodsKeyboard = Markup.inlineKeyboard([
-  [Markup.button.callback('⭐ Telegram Stars', 'pm_stars')],
-  [Markup.button.callback('🟡 Binance Pay', 'pm_binance')],
-  [Markup.button.callback('💠 USDT Crypto', 'pm_usdt')],
-  [Markup.button.callback('🔙 رجوع', 'back_main')],
-]);
-
-const usdtNetworkKeyboard = Markup.inlineKeyboard([
-  [Markup.button.callback('🔵 USDT TRC20', 'pm_usdt_trc20')],
-  [Markup.button.callback('🟡 USDT BEP20', 'pm_usdt_bep20')],
-  [Markup.button.callback('🔷 USDT ERC20', 'pm_usdt_erc20')],
-  [Markup.button.callback('🔙 رجوع', 'payment_methods')],
-]);
+// ─── Helper ───────────────────────────────────────────────────
+async function editOrReply(ctx, text, extra) {
+  try { await ctx.editMessageText(text, extra); }
+  catch (_) { await ctx.reply(text, extra); }
+}
 
 // ─── Middleware ───────────────────────────────────────────────
-
 bot.use(async (ctx, next) => {
-  try { await next(); } catch (error) {
-    console.error('❌ Middleware error:', error.message);
-    throw error;
-  }
+  try { await next(); } catch (err) { console.error('MW error:', err.message); throw err; }
 });
 
 // ─── /start ──────────────────────────────────────────────────
-
 bot.start(async (ctx) => {
-  try {
-    const firstName = ctx.from.first_name || 'عزيزي';
-    const welcome = `
-🌟 *أهلاً ${firstName}!*
-
-مرحباً بك في متجر الاشتراكات الرقمية 🛍️
-
-نقدم لك أفضل الاشتراكات بأسعار تنافسية وبشكل آمن وسريع.
-
-📦 *خدماتنا:*
-• ▶️ YouTube Premium
-• 🎬 Netflix Premium
-• 🎥 Shahid Plus
-
-💳 *طرق الدفع المتاحة:*
-• ⭐ Telegram Stars
-• 🟡 Binance Pay
-• 💠 USDT (TRC20 / BEP20 / ERC20)
-
-✅ تفعيل سريع | 🔒 دفع آمن | 💬 دعم 24/7
-
-👇 اختر من القائمة للبدء
-    `.trim();
-
-    await ctx.reply(welcome, {
-      parse_mode: 'Markdown',
-      reply_markup: mainKeyboard.reply_markup
-    });
-  } catch (error) {
-    console.error('❌ /start error:', error.message);
-    try { await ctx.reply('❌ حدث خطأ. الرجاء المحاولة لاحقاً.'); } catch (_) {}
-  }
-});
-
-// ─── /help ───────────────────────────────────────────────────
-
-bot.command('help', async (ctx) => {
-  await ctx.reply(
-    `📚 *مركز المساعدة*\n\n` +
-    `*الأوامر المتاحة:*\n` +
-    `• /start — الصفحة الرئيسية\n` +
-    `• /orders — طلباتي\n` +
-    `• /help — المساعدة\n` +
-    `• /contact — تواصل معنا\n\n` +
-    `للدعم المباشر تواصل مع ${PAYMENT_INFO.support} 💬`,
-    { parse_mode: 'Markdown', reply_markup: backMainKeyboard.reply_markup }
-  );
-});
-
-// ─── /contact ────────────────────────────────────────────────
-
-bot.command('contact', async (ctx) => {
-  await ctx.reply(
-    `💬 *تواصل معنا*\n\n` +
-    `يسعدنا مساعدتك في أي وقت!\n\n` +
-    `👤 الدعم المباشر: ${PAYMENT_INFO.support}\n` +
-    `⏰ متاحون: 24/7`,
-    { parse_mode: 'Markdown', reply_markup: backMainKeyboard.reply_markup }
-  );
-});
-
-// ─── /orders ─────────────────────────────────────────────────
-
-bot.command('orders', async (ctx) => {
-  await showOrders(ctx, false);
-});
-
-// ─── /admin ──────────────────────────────────────────────────
-
-bot.command('admin', async (ctx) => {
-  if (ctx.from.id !== FOUNDER_ID) return ctx.reply('❌ غير مصرح لك.');
-  await ctx.reply('👨‍💼 *لوحة تحكم الأدمن*', {
-    parse_mode: 'Markdown',
-    reply_markup: adminKeyboard.reply_markup
-  });
-});
-
-// ─── Main Navigation ──────────────────────────────────────────
-
-bot.action('back_main', async (ctx) => {
-  await ctx.answerCbQuery();
-  try {
-    await ctx.editMessageText(
-      `🌟 *القائمة الرئيسية*\n\nاختر ما تريد:`,
-      { parse_mode: 'Markdown', reply_markup: mainKeyboard.reply_markup }
-    );
-  } catch (_) {
-    await ctx.reply('🌟 *القائمة الرئيسية*\n\nاختر ما تريد:', {
-      parse_mode: 'Markdown',
-      reply_markup: mainKeyboard.reply_markup
-    });
-  }
-});
-
-// ─── Products ─────────────────────────────────────────────────
-
-bot.action('section_products', async (ctx) => {
-  await ctx.answerCbQuery();
-  try {
-    await ctx.editMessageText(
-      `🛍️ *المنتجات المتاحة*\n\nاختر الخدمة التي تريدها:`,
-      { parse_mode: 'Markdown', reply_markup: productsKeyboard.reply_markup }
-    );
-  } catch (_) {}
-});
-
-bot.action('section_youtube', async (ctx) => {
-  await ctx.answerCbQuery();
-  try {
-    await ctx.editMessageText(
-      `▶️ *YouTube Premium*\n\n🎵 استمع وشاهد بدون إعلانات\n🎬 محتوى حصري YouTube Originals\n📱 تشغيل في الخلفية\n\nاختر الباقة:`,
-      { parse_mode: 'Markdown', reply_markup: youtubeKeyboard.reply_markup }
-    );
-  } catch (_) {}
-});
-
-bot.action('section_netflix', async (ctx) => {
-  await ctx.answerCbQuery();
-  try {
-    await ctx.editMessageText(
-      `🎬 *Netflix Premium*\n\n📺 جودة 4K Ultra HD\n👥 4 شاشات في آن واحد\n🎭 آلاف الأفلام والمسلسلات\n\nاختر الباقة:`,
-      { parse_mode: 'Markdown', reply_markup: netflixKeyboard.reply_markup }
-    );
-  } catch (_) {}
-});
-
-bot.action('section_shahid', async (ctx) => {
-  await ctx.answerCbQuery();
-  try {
-    await ctx.editMessageText(
-      `🎥 *Shahid Plus*\n\n🌟 أفضل المسلسلات العربية\n🎬 أفلام ومسلسلات حصرية\n📱 على جميع الأجهزة\n\nاختر الباقة:`,
-      { parse_mode: 'Markdown', reply_markup: shahidKeyboard.reply_markup }
-    );
-  } catch (_) {}
-});
-
-// ─── FAQ ─────────────────────────────────────────────────────
-
-bot.action('faq', async (ctx) => {
-  await ctx.answerCbQuery();
-  try {
-    await ctx.editMessageText(
-      `❓ *الأسئلة الشائعة*\n\n` +
-      `*1️⃣ كيف أدفع؟*\n` +
-      `لدينا 3 طرق دفع: Telegram Stars، Binance Pay، وعملات USDT.\n\n` +
-      `*2️⃣ متى يتم التفعيل؟*\n` +
-      `يتم التفعيل خلال دقائق بعد مراجعة الطلب من فريقنا.\n\n` +
-      `*3️⃣ ماذا بعد الدفع؟*\n` +
-      `أرسل إثبات الدفع (سكرين شوت) وإيميلك، وسيتم التفعيل فوراً.\n\n` +
-      `*4️⃣ هل الدفع آمن؟*\n` +
-      `نعم 100%، جميع طرق الدفع موثوقة وآمنة.\n\n` +
-      `*5️⃣ ماذا لو واجهت مشكلة؟*\n` +
-      `تواصل مع فريق الدعم ${PAYMENT_INFO.support} وسنساعدك فوراً.\n\n` +
-      `*6️⃣ هل يمكن استرداد المبلغ؟*\n` +
-      `في حال وجود مشكلة من جهتنا نعم، نضمن حقك كاملاً.`,
-      { parse_mode: 'Markdown', reply_markup: backMainKeyboard.reply_markup }
-    );
-  } catch (_) {}
-});
-
-// ─── Support ─────────────────────────────────────────────────
-
-bot.action('support', async (ctx) => {
-  await ctx.answerCbQuery();
-  try {
-    await ctx.editMessageText(
-      `💬 *تواصل مع فريق الدعم*\n\n` +
-      `يسعدنا مساعدتك في أي وقت! 🌟\n\n` +
-      `👤 *الدعم المباشر:* ${PAYMENT_INFO.support}\n` +
-      `⏰ *أوقات الدعم:* 24/7\n\n` +
-      `_يمكنك التواصل معنا لأي استفسار أو مشكلة_`,
-      { parse_mode: 'Markdown', reply_markup: backMainKeyboard.reply_markup }
-    );
-  } catch (_) {}
-});
-
-// ─── Payment Methods Info ─────────────────────────────────────
-
-bot.action('payment_methods', async (ctx) => {
-  await ctx.answerCbQuery();
-  try {
-    await ctx.editMessageText(
-      `💳 *طرق الدفع المتاحة*\n\n` +
-      `اختر طريقة الدفع المناسبة لك:`,
-      { parse_mode: 'Markdown', reply_markup: paymentMethodsKeyboard.reply_markup }
-    );
-  } catch (_) {}
-});
-
-bot.action('pm_stars', async (ctx) => {
-  await ctx.answerCbQuery();
-  try {
-    await ctx.editMessageText(
-      `⭐ *Telegram Stars*\n\n` +
-      `الدفع الرسمي والآمن عبر تلغرام مباشرة.\n\n` +
-      `*كيف أدفع بـ Stars؟*\n` +
-      `1. اختر المنتج من قسم المنتجات\n` +
-      `2. اضغط على الباقة التي تريدها\n` +
-      `3. ستظهر لك فاتورة الدفع\n` +
-      `4. اضغط "دفع" وأكمل العملية\n` +
-      `5. أدخل إيميلك بعد الدفع ✅\n\n` +
-      `_الدفع يتم عبر نظام تلغرام الرسمي بأمان تام_`,
-      { parse_mode: 'Markdown', reply_markup: Markup.inlineKeyboard([
-        [Markup.button.callback('🛍️ اذهب للمنتجات', 'section_products')],
-        [Markup.button.callback('🔙 رجوع', 'payment_methods')],
-      ]).reply_markup }
-    );
-  } catch (_) {}
-});
-
-bot.action('pm_binance', async (ctx) => {
-  await ctx.answerCbQuery();
-  try {
-    await ctx.editMessageText(
-      `🟡 *Binance Pay*\n\n` +
-      `*Binance ID:*\n` +
-      `\`${PAYMENT_INFO.binance_id}\`\n\n` +
-      `*خطوات الدفع:*\n` +
-      `1️⃣ افتح تطبيق Binance\n` +
-      `2️⃣ اذهب إلى Pay ← Send\n` +
-      `3️⃣ أدخل الـ ID: \`${PAYMENT_INFO.binance_id}\`\n` +
-      `4️⃣ أدخل المبلغ المطلوب للباقة\n` +
-      `5️⃣ أكمل عملية الدفع\n` +
-      `6️⃣ خذ سكرين شوت للتأكيد\n` +
-      `7️⃣ أرسل السكرين شوت لـ ${PAYMENT_INFO.support} مع إيميلك والباقة المطلوبة\n\n` +
-      `_سيتم التفعيل بعد التحقق من الدفع_`,
-      { parse_mode: 'Markdown', reply_markup: Markup.inlineKeyboard([
-        [Markup.button.callback('🔙 رجوع', 'payment_methods')],
-      ]).reply_markup }
-    );
-  } catch (_) {}
-});
-
-bot.action('pm_usdt', async (ctx) => {
-  await ctx.answerCbQuery();
-  try {
-    await ctx.editMessageText(
-      `💠 *USDT Crypto*\n\nاختر الشبكة:`,
-      { parse_mode: 'Markdown', reply_markup: usdtNetworkKeyboard.reply_markup }
-    );
-  } catch (_) {}
-});
-
-bot.action('pm_usdt_trc20', async (ctx) => {
-  await ctx.answerCbQuery();
-  try {
-    await ctx.editMessageText(
-      `🔵 *USDT TRC20 (Tron)*\n\n` +
-      `*عنوان المحفظة:*\n` +
-      `\`${PAYMENT_INFO.usdt_trc20}\`\n\n` +
-      `*خطوات الدفع:*\n` +
-      `1️⃣ افتح محفظتك (Binance / Trust Wallet / إلخ)\n` +
-      `2️⃣ اختر إرسال USDT على شبكة TRC20\n` +
-      `3️⃣ انسخ العنوان أعلاه والصقه\n` +
-      `4️⃣ أدخل المبلغ المطلوب للباقة\n` +
-      `5️⃣ أكمل التحويل\n` +
-      `6️⃣ خذ سكرين شوت أو hash التحويل\n` +
-      `7️⃣ أرسله لـ ${PAYMENT_INFO.support} مع إيميلك والباقة المطلوبة\n\n` +
-      `⚠️ _تأكد أنك تستخدم شبكة TRC20 وليس غيرها لتجنب فقدان الأموال_`,
-      { parse_mode: 'Markdown', reply_markup: Markup.inlineKeyboard([
-        [Markup.button.callback('🔙 رجوع', 'pm_usdt')],
-      ]).reply_markup }
-    );
-  } catch (_) {}
-});
-
-bot.action('pm_usdt_bep20', async (ctx) => {
-  await ctx.answerCbQuery();
-  try {
-    await ctx.editMessageText(
-      `🟡 *USDT BEP20 (BSC)*\n\n` +
-      `*عنوان المحفظة:*\n` +
-      `\`${PAYMENT_INFO.usdt_bep20}\`\n\n` +
-      `*خطوات الدفع:*\n` +
-      `1️⃣ افتح محفظتك (Binance / MetaMask / إلخ)\n` +
-      `2️⃣ اختر إرسال USDT على شبكة BEP20 (BSC)\n` +
-      `3️⃣ انسخ العنوان أعلاه والصقه\n` +
-      `4️⃣ أدخل المبلغ المطلوب للباقة\n` +
-      `5️⃣ أكمل التحويل\n` +
-      `6️⃣ خذ سكرين شوت أو hash التحويل\n` +
-      `7️⃣ أرسله لـ ${PAYMENT_INFO.support} مع إيميلك والباقة المطلوبة\n\n` +
-      `⚠️ _تأكد أنك تستخدم شبكة BEP20 (BSC) لتجنب فقدان الأموال_`,
-      { parse_mode: 'Markdown', reply_markup: Markup.inlineKeyboard([
-        [Markup.button.callback('🔙 رجوع', 'pm_usdt')],
-      ]).reply_markup }
-    );
-  } catch (_) {}
-});
-
-bot.action('pm_usdt_erc20', async (ctx) => {
-  await ctx.answerCbQuery();
-  try {
-    await ctx.editMessageText(
-      `🔷 *USDT ERC20 (Ethereum)*\n\n` +
-      `*عنوان المحفظة:*\n` +
-      `\`${PAYMENT_INFO.usdt_erc20}\`\n\n` +
-      `*خطوات الدفع:*\n` +
-      `1️⃣ افتح محفظتك (MetaMask / Trust Wallet / إلخ)\n` +
-      `2️⃣ اختر إرسال USDT على شبكة ERC20 (Ethereum)\n` +
-      `3️⃣ انسخ العنوان أعلاه والصقه\n` +
-      `4️⃣ أدخل المبلغ المطلوب للباقة\n` +
-      `5️⃣ أكمل التحويل\n` +
-      `6️⃣ خذ سكرين شوت أو hash التحويل\n` +
-      `7️⃣ أرسله لـ ${PAYMENT_INFO.support} مع إيميلك والباقة المطلوبة\n\n` +
-      `⚠️ _تأكد أنك تستخدم شبكة ERC20. رسوم الغاز مرتفعة نسبياً_`,
-      { parse_mode: 'Markdown', reply_markup: Markup.inlineKeyboard([
-        [Markup.button.callback('🔙 رجوع', 'pm_usdt')],
-      ]).reply_markup }
-    );
-  } catch (_) {}
-});
-
-// ─── My Orders ───────────────────────────────────────────────
-
-bot.action('my_orders', async (ctx) => {
-  await ctx.answerCbQuery();
-  await showOrders(ctx, true);
-});
-
-async function showOrders(ctx, isCallback) {
   const userId = ctx.from.id;
-  try {
-    const { data, error } = await supabase
-      .from('subscriptions')
-      .select('*')
-      .eq('user_id', userId)
-      .order('created_at', { ascending: false })
-      .limit(5);
+  const lang = getLang(userId);
 
-    const statusEmoji = { pending: '⏳', approved: '✅', rejected: '❌' };
-    const statusText  = { pending: 'قيد المراجعة', approved: 'مكتمل ✅', rejected: 'مرفوض ❌' };
-
-    if (error || !data || data.length === 0) {
-      const msg = `📦 *طلباتي*\n\nلا يوجد لديك طلبات سابقة بعد.\nاضغط على المنتجات لبدء الاشتراك! 🛍️`;
-      if (isCallback) return ctx.editMessageText(msg, { parse_mode: 'Markdown', reply_markup: backMainKeyboard.reply_markup });
-      return ctx.reply(msg, { parse_mode: 'Markdown', reply_markup: backMainKeyboard.reply_markup });
-    }
-
-    let message = `📦 *طلباتي* (آخر ${data.length} طلبات)\n\n`;
-    data.forEach((order, i) => {
-      message += `*${i + 1}. طلب #${order.id}*\n`;
-      message += `   💰 ${order.payment_amount} ⭐\n`;
-      message += `   ${statusEmoji[order.status] || '❓'} ${statusText[order.status] || order.status}\n`;
-      message += `   📅 ${new Date(order.created_at).toLocaleDateString('ar-SA')}\n\n`;
+  if (!verifiedUsers.has(userId)) {
+    return ctx.reply(T[lang].verify_prompt, {
+      parse_mode: 'Markdown',
+      reply_markup: kb.verify(lang).reply_markup,
     });
-
-    if (isCallback) return ctx.editMessageText(message, { parse_mode: 'Markdown', reply_markup: backMainKeyboard.reply_markup });
-    return ctx.reply(message, { parse_mode: 'Markdown', reply_markup: backMainKeyboard.reply_markup });
-  } catch (error) {
-    console.error('❌ showOrders error:', error.message);
-    ctx.reply('❌ حدث خطأ. الرجاء المحاولة لاحقاً.');
   }
+  await showMain(ctx, false);
+});
+
+// ─── /lang ───────────────────────────────────────────────────
+bot.command('lang', async (ctx) => {
+  const userId = ctx.from.id;
+  const lang = getLang(userId);
+  await ctx.reply(
+    lang === 'en'
+      ? `🌐 *Language / اللغة*\n\nCurrent: 🇬🇧 English`
+      : `🌐 *Language / اللغة*\n\nالحالية: 🇸🇦 العربية`,
+    {
+      parse_mode: 'Markdown',
+      reply_markup: Markup.inlineKeyboard([
+        [Markup.button.callback('🇬🇧 English', 'set_lang_en'), Markup.button.callback('🇸🇦 العربية', 'set_lang_ar')],
+      ]).reply_markup,
+    }
+  );
+});
+
+// ─── Anti-spam ────────────────────────────────────────────────
+bot.action('verify_human', async (ctx) => {
+  const userId = ctx.from.id;
+  const lang = getLang(userId);
+  verifiedUsers.add(userId);
+  await ctx.answerCbQuery('✅');
+  await ctx.editMessageText(T[lang].verify_success, { parse_mode: 'Markdown' });
+  setTimeout(async () => { try { await showMain(ctx, false); } catch (_) {} }, 700);
+});
+
+// ─── Language Switch ──────────────────────────────────────────
+bot.action('switch_lang', async (ctx) => {
+  const userId = ctx.from.id;
+  const current = getLang(userId);
+  const next = current === 'en' ? 'ar' : 'en';
+  userLang.set(userId, next);
+  await ctx.answerCbQuery(next === 'ar' ? '🇸🇦 تم التبديل للعربية' : '🇬🇧 Switched to English');
+  await showMain(ctx, true);
+});
+
+bot.action('set_lang_en', async (ctx) => {
+  userLang.set(ctx.from.id, 'en');
+  await ctx.answerCbQuery('🇬🇧 English selected');
+  await showMain(ctx, false);
+});
+
+bot.action('set_lang_ar', async (ctx) => {
+  userLang.set(ctx.from.id, 'ar');
+  await ctx.answerCbQuery('🇸🇦 تم اختيار العربية');
+  await showMain(ctx, false);
+});
+
+// ─── Main Menu ────────────────────────────────────────────────
+async function showMain(ctx, isEdit) {
+  const lang = getLang(ctx.from.id);
+  const name = ctx.from?.first_name || (lang === 'ar' ? 'عزيزي' : 'there');
+  const text = T[lang].main_text(name);
+  const extra = { parse_mode: 'Markdown', reply_markup: kb.main(lang).reply_markup };
+  if (isEdit) await editOrReply(ctx, text, extra);
+  else await ctx.reply(text, extra);
 }
 
-// ─── Admin Actions ────────────────────────────────────────────
+bot.action('nav_main', async (ctx) => { await ctx.answerCbQuery(); await showMain(ctx, true); });
 
-bot.action('admin_stats', async (ctx) => {
-  if (ctx.from.id !== FOUNDER_ID) return ctx.answerCbQuery('❌ غير مصرح.');
+// ─── Products ─────────────────────────────────────────────────
+bot.action('nav_products', async (ctx) => {
   await ctx.answerCbQuery();
-  try {
-    const { data: all } = await supabase.from('subscriptions').select('status, payment_amount');
-    const total    = all?.length || 0;
-    const approved = all?.filter(o => o.status === 'approved').length || 0;
-    const pending  = all?.filter(o => o.status === 'pending').length || 0;
-    const rejected = all?.filter(o => o.status === 'rejected').length || 0;
-    const revenue  = all?.filter(o => o.status === 'approved').reduce((s, o) => s + (o.payment_amount || 0), 0) || 0;
-
-    await ctx.editMessageText(
-      `📊 *إحصائيات المتجر*\n\n` +
-      `📦 إجمالي الطلبات: *${total}*\n` +
-      `✅ مكتملة: *${approved}*\n` +
-      `⏳ قيد المراجعة: *${pending}*\n` +
-      `❌ مرفوضة: *${rejected}*\n\n` +
-      `💰 إجمالي الإيرادات: *${revenue} ⭐*`,
-      { parse_mode: 'Markdown', reply_markup: adminKeyboard.reply_markup }
-    );
-  } catch (error) {
-    ctx.reply('❌ خطأ في جلب الإحصائيات.');
-  }
+  const lang = getLang(ctx.from.id);
+  await editOrReply(ctx, T[lang].browse, { parse_mode: 'Markdown', reply_markup: kb.products(lang).reply_markup });
 });
 
-bot.action('admin_broadcast', async (ctx) => {
-  if (ctx.from.id !== FOUNDER_ID) return ctx.answerCbQuery('❌ غير مصرح.');
+bot.action('cat_youtube', async (ctx) => {
   await ctx.answerCbQuery();
-  broadcastMode.set(FOUNDER_ID, true);
-  await ctx.reply(
-    `📢 *وضع الـ Broadcast*\n\n` +
-    `أرسل الرسالة التي تريد إرسالها لجميع المستخدمين.\n\n` +
-    `_أرسل /cancel للإلغاء_`,
-    { parse_mode: 'Markdown' }
-  );
+  const lang = getLang(ctx.from.id);
+  await editOrReply(ctx, T[lang].youtube_desc, { parse_mode: 'Markdown', reply_markup: kb.youtube(lang).reply_markup });
 });
 
-// ─── Stars Buy Actions ────────────────────────────────────────
+bot.action('cat_netflix', async (ctx) => {
+  await ctx.answerCbQuery();
+  const lang = getLang(ctx.from.id);
+  await editOrReply(ctx, T[lang].netflix_desc, { parse_mode: 'Markdown', reply_markup: kb.netflix(lang).reply_markup });
+});
 
-Object.entries(plans).forEach(([key, plan]) => {
+bot.action('cat_shahid', async (ctx) => {
+  await ctx.answerCbQuery();
+  const lang = getLang(ctx.from.id);
+  await editOrReply(ctx, T[lang].shahid_desc, { parse_mode: 'Markdown', reply_markup: kb.shahid(lang).reply_markup });
+});
+
+// ─── Buy ──────────────────────────────────────────────────────
+Object.entries(PLANS).forEach(([key, plan]) => {
   bot.action(`buy_${key}`, async (ctx) => {
-    const userId = ctx.from.id;
     try {
       await ctx.answerCbQuery();
       await ctx.replyWithInvoice({
         title: plan.title,
         description: plan.description,
-        payload: `${key}_${userId}_${Date.now()}`,
+        payload: `${key}_${ctx.from.id}_${Date.now()}`,
         provider_token: '',
         currency: 'XTR',
-        prices: [{ label: plan.title, amount: plan.amount }]
+        prices: [{ label: plan.title, amount: plan.amount }],
       });
-    } catch (error) {
-      console.error('❌ Invoice error:', error.message);
-      try { await ctx.answerCbQuery('❌ حدث خطأ. الرجاء المحاولة لاحقاً.', true); } catch (_) {}
+    } catch (err) {
+      try { await ctx.answerCbQuery('❌ Error. Try again.', true); } catch (_) {}
     }
   });
 });
 
-// ─── Pre-checkout ─────────────────────────────────────────────
-
-bot.on('pre_checkout_query', async (ctx) => {
-  try {
-    await ctx.answerPreCheckoutQuery(true);
-  } catch (error) {
-    try { await ctx.answerPreCheckoutQuery(false, { error_message: 'حدث خطأ. الرجاء المحاولة لاحقاً.' }); } catch (_) {}
-  }
+// ─── FAQ ─────────────────────────────────────────────────────
+bot.action('nav_faq', async (ctx) => {
+  await ctx.answerCbQuery();
+  const lang = getLang(ctx.from.id);
+  await editOrReply(ctx, T[lang].faq_text, { parse_mode: 'Markdown', reply_markup: kb.backMain(lang).reply_markup });
 });
 
-// ─── Successful Payment (Stars) ───────────────────────────────
+// ─── Support ─────────────────────────────────────────────────
+bot.action('nav_support', async (ctx) => {
+  await ctx.answerCbQuery();
+  const lang = getLang(ctx.from.id);
+  await editOrReply(ctx, T[lang].support_text, { parse_mode: 'Markdown', reply_markup: kb.backMain(lang).reply_markup });
+});
 
-bot.on('successful_payment', async (ctx) => {
+// ─── Payments ────────────────────────────────────────────────
+bot.action('nav_payments', async (ctx) => {
+  await ctx.answerCbQuery();
+  const lang = getLang(ctx.from.id);
+  await editOrReply(ctx, T[lang].payments_text, { parse_mode: 'Markdown', reply_markup: kb.payments(lang).reply_markup });
+});
+
+bot.action('pm_stars', async (ctx) => {
+  await ctx.answerCbQuery();
+  const lang = getLang(ctx.from.id);
+  await editOrReply(ctx, T[lang].stars_text, { parse_mode: 'Markdown', reply_markup: kb.starsBack(lang).reply_markup });
+});
+
+bot.action('pm_binance', async (ctx) => {
+  await ctx.answerCbQuery();
+  const lang = getLang(ctx.from.id);
+  await editOrReply(ctx, T[lang].binance_text, { parse_mode: 'Markdown', reply_markup: kb.backPayments(lang).reply_markup });
+});
+
+bot.action('pm_usdt', async (ctx) => {
+  await ctx.answerCbQuery();
+  const lang = getLang(ctx.from.id);
+  await editOrReply(ctx, T[lang].usdt_text, { parse_mode: 'Markdown', reply_markup: kb.usdt(lang).reply_markup });
+});
+
+bot.action('pm_trc20', async (ctx) => {
+  await ctx.answerCbQuery();
+  const lang = getLang(ctx.from.id);
+  await editOrReply(ctx, T[lang].trc20_text, { parse_mode: 'Markdown', reply_markup: kb.backUsdt(lang).reply_markup });
+});
+
+bot.action('pm_bep20', async (ctx) => {
+  await ctx.answerCbQuery();
+  const lang = getLang(ctx.from.id);
+  await editOrReply(ctx, T[lang].bep20_text, { parse_mode: 'Markdown', reply_markup: kb.backUsdt(lang).reply_markup });
+});
+
+bot.action('pm_erc20', async (ctx) => {
+  await ctx.answerCbQuery();
+  const lang = getLang(ctx.from.id);
+  await editOrReply(ctx, T[lang].erc20_text, { parse_mode: 'Markdown', reply_markup: kb.backUsdt(lang).reply_markup });
+});
+
+// ─── My Orders ───────────────────────────────────────────────
+bot.action('nav_orders', async (ctx) => { await ctx.answerCbQuery(); await showOrders(ctx, true); });
+bot.command('orders', async (ctx) => { await showOrders(ctx, false); });
+
+async function showOrders(ctx, isEdit) {
   const userId = ctx.from.id;
-  const username = ctx.from.username || ctx.from.first_name || 'غير معروف';
-  const payment = ctx.message.successful_payment;
-
+  const lang = getLang(userId);
   try {
-    userInfoCache.set(userId, {
-      first_name: ctx.from.first_name || '',
-      last_name: ctx.from.last_name || '',
-      username
-    });
+    const { data } = await supabase.from('subscriptions').select('*').eq('user_id', userId).order('created_at', { ascending: false }).limit(5);
+    const extra = { parse_mode: 'Markdown', reply_markup: kb.backMain(lang).reply_markup };
 
-    const paymentAmount = payment.currency === 'XTR' ? payment.total_amount : payment.total_amount / 100;
-
-    const { data, error } = await supabase
-      .from('subscriptions')
-      .insert({ user_id: userId, username, status: 'pending', payment_amount: paymentAmount, payment_currency: payment.currency, email: null })
-      .select().single();
-
-    if (error) {
-      console.error('❌ DB error:', error);
-      return ctx.reply('❌ خطأ في حفظ البيانات. تواصل مع الدعم: ' + PAYMENT_INFO.support);
+    if (!data?.length) {
+      if (isEdit) return editOrReply(ctx, T[lang].orders_empty, extra);
+      return ctx.reply(T[lang].orders_empty, extra);
     }
 
-    pendingEmailEntries.set(userId, data.id);
+    let msg = T[lang].orders_title(data.length);
+    data.forEach((o, i) => { msg += T[lang].order_row(o, i); });
 
-    await ctx.reply(
-      `✅ *تم استلام الدفع بنجاح!*\n\n` +
-      `📧 الآن أدخل الإيميل المرتبط بحسابك لإتمام التفعيل:\n\n` +
-      `⚠️ تأكد من صحة الإيميل — نحن غير مسؤولين في حال كان خاطئاً`,
-      { parse_mode: 'Markdown' }
-    );
-  } catch (error) {
-    console.error('❌ Payment error:', error.message);
-    try { await ctx.reply('❌ حدث خطأ. تواصل مع الدعم: ' + PAYMENT_INFO.support); } catch (_) {}
+    if (isEdit) return editOrReply(ctx, msg, extra);
+    return ctx.reply(msg, extra);
+  } catch (_) {
+    ctx.reply('❌ Error loading orders.');
+  }
+}
+
+// ─── Pre-checkout ─────────────────────────────────────────────
+bot.on('pre_checkout_query', async (ctx) => {
+  try { await ctx.answerPreCheckoutQuery(true); }
+  catch (_) { try { await ctx.answerPreCheckoutQuery(false, { error_message: 'Error. Try again.' }); } catch (__) {} }
+});
+
+// ─── Successful Payment ───────────────────────────────────────
+bot.on('successful_payment', async (ctx) => {
+  const userId = ctx.from.id;
+  const lang = getLang(userId);
+  const username = ctx.from.username || ctx.from.first_name || 'Unknown';
+  const payment = ctx.message.successful_payment;
+  try {
+    userInfoCache.set(userId, { first_name: ctx.from.first_name || '', username });
+    const amount = payment.currency === 'XTR' ? payment.total_amount : payment.total_amount / 100;
+    const { data, error } = await supabase.from('subscriptions')
+      .insert({ user_id: userId, username, status: 'pending', payment_amount: amount, payment_currency: payment.currency, email: null })
+      .select().single();
+    if (error) return ctx.reply(`❌ Error. Contact ${PAYMENT_INFO.support}`);
+    pendingEmail.set(userId, data.id);
+    await ctx.reply(T[lang].pay_received, { parse_mode: 'Markdown' });
+  } catch (err) {
+    try { await ctx.reply(`❌ Error. Contact ${PAYMENT_INFO.support}`); } catch (_) {}
   }
 });
 
 // ─── Text Handler ─────────────────────────────────────────────
-
 bot.on('text', async (ctx) => {
   const userId = ctx.from.id;
-  const text = ctx.message.text;
+  const lang = getLang(userId);
+  const text = ctx.message.text.trim();
 
-  // Cancel command
   if (text === '/cancel') {
     broadcastMode.delete(userId);
-    pendingEmailEntries.delete(userId);
-    return ctx.reply('❌ تم الإلغاء.', { reply_markup: backMainKeyboard.reply_markup });
+    pendingEmail.delete(userId);
+    return ctx.reply('❌ Cancelled.', { reply_markup: kb.backMain(lang).reply_markup });
   }
-
   if (text.startsWith('/')) return;
 
-  // Broadcast للأدمن
+  // Broadcast
   if (userId === FOUNDER_ID && broadcastMode.get(FOUNDER_ID)) {
     broadcastMode.delete(FOUNDER_ID);
     try {
       const { data: users } = await supabase.from('subscriptions').select('user_id');
-      if (!users || users.length === 0) return ctx.reply('❌ لا يوجد مستخدمين.');
-
-      const uniqueUsers = [...new Set(users.map(u => u.user_id))];
-      await ctx.reply(`📢 جاري الإرسال لـ ${uniqueUsers.length} مستخدم...`);
-
+      if (!users?.length) return ctx.reply('No users found.');
+      const unique = [...new Set(users.map(u => u.user_id))];
+      await ctx.reply(`📢 Sending to ${unique.length} users...`);
       let sent = 0, failed = 0;
-      for (const uid of uniqueUsers) {
-        try {
-          await bot.telegram.sendMessage(uid, text, { parse_mode: 'Markdown' });
-          sent++;
-        } catch (_) { failed++; }
+      for (const uid of unique) {
+        try { await bot.telegram.sendMessage(uid, text, { parse_mode: 'Markdown' }); sent++; }
+        catch (_) { failed++; }
         await new Promise(r => setTimeout(r, 50));
       }
-      return ctx.reply(`✅ *تم الإرسال!*\n\n📤 نجح: ${sent}\n❌ فشل: ${failed}`, { parse_mode: 'Markdown' });
-    } catch (error) {
-      return ctx.reply('❌ خطأ في الإرسال.');
-    }
+      return ctx.reply(`✅ Done!\n✓ ${sent} sent\n✗ ${failed} failed`);
+    } catch (_) { return ctx.reply('❌ Broadcast failed.'); }
   }
 
-  // Email بعد الدفع بـ Stars
-  if (pendingEmailEntries.has(userId)) {
-    const subscriptionId = pendingEmailEntries.get(userId);
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-
-    if (!emailRegex.test(text)) {
-      return ctx.reply('❌ يرجى إدخال إيميل صحيح.\nمثال: name@gmail.com');
+  // Email
+  if (pendingEmail.has(userId)) {
+    const subId = pendingEmail.get(userId);
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(text)) {
+      return ctx.reply(T[lang].email_invalid, { parse_mode: 'Markdown' });
     }
-
     try {
-      const { data, error } = await supabase
-        .from('subscriptions')
+      const { data, error } = await supabase.from('subscriptions')
         .update({ email: text, updated_at: new Date().toISOString() })
-        .eq('id', subscriptionId)
-        .select().single();
-
-      if (error) return ctx.reply('❌ خطأ في حفظ الإيميل. الرجاء المحاولة لاحقاً.');
-
-      pendingEmailEntries.delete(userId);
-      await notifyFounder(ctx, data);
-      await ctx.reply(
-        `✅ *شكراً!*\n\n` +
-        `تم استلام طلبك وسيتم التفعيل قريباً.\n\n` +
-        `يمكنك متابعة حالة طلبك عبر /orders 📦`,
-        { parse_mode: 'Markdown' }
-      );
-    } catch (error) {
-      console.error('Email save error:', error);
-      ctx.reply('❌ حدث خطأ. الرجاء المحاولة لاحقاً.');
-    }
-    return;
+        .eq('id', subId).select().single();
+      if (error) return ctx.reply('❌ Error. Try again.');
+      pendingEmail.delete(userId);
+      await notifyFounder(data);
+      await ctx.reply(T[lang].email_saved, { parse_mode: 'Markdown' });
+    } catch (_) { ctx.reply('❌ Error. Try again.'); }
   }
 });
 
-// ─── Photo Handler (للدفع اليدوي) ────────────────────────────
-
+// ─── Photo (manual payment proof) ────────────────────────────
 bot.on('photo', async (ctx) => {
   const userId = ctx.from.id;
-  const username = ctx.from.username || ctx.from.first_name || 'غير معروف';
-
-  // أرسل إشعار للأدمن بالسكرين شوت
+  const lang = getLang(userId);
+  const username = ctx.from.username || ctx.from.first_name || 'Unknown';
   try {
-    const caption = ctx.message.caption || 'بدون ملاحظة';
     const fileId = ctx.message.photo[ctx.message.photo.length - 1].file_id;
-
+    const caption = ctx.message.caption || '—';
     await bot.telegram.sendPhoto(FOUNDER_ID, fileId, {
-      caption:
-        `📸 *سكرين شوت دفع يدوي*\n\n` +
-        `👤 المستخدم: @${username} (ID: \`${userId}\`)\n` +
-        `📝 الملاحظة: ${caption}\n\n` +
-        `_راجع الدفع وأرسل الإيميل لإتمام التفعيل_`,
+      caption: `📸 *Manual Payment*\n\n👤 @${username} (\`${userId}\`)\n📝 ${caption}`,
       parse_mode: 'Markdown',
       reply_markup: Markup.inlineKeyboard([
-        [Markup.button.callback(`✅ تم التفعيل`, `manual_approve_${userId}`)],
-        [Markup.button.callback(`❌ رفض`, `manual_reject_${userId}`)],
-      ]).reply_markup
+        [Markup.button.callback('✅  Activate', `man_ok_${userId}`), Markup.button.callback('❌  Reject', `man_no_${userId}`)],
+      ]).reply_markup,
     });
-
-    await ctx.reply(
-      `✅ *تم استلام إثبات الدفع!*\n\n` +
-      `سيقوم فريقنا بمراجعته وتفعيل اشتراكك قريباً.\n\n` +
-      `للاستفسار تواصل مع ${PAYMENT_INFO.support} 💬`,
-      { parse_mode: 'Markdown' }
-    );
-  } catch (error) {
-    console.error('Photo handler error:', error.message);
-  }
+    await ctx.reply(T[lang].proof_received, { parse_mode: 'Markdown' });
+  } catch (err) { console.error('Photo error:', err.message); }
 });
 
-// Manual approve/reject
-bot.action(/^manual_approve_(\d+)$/, async (ctx) => {
-  if (ctx.from.id !== FOUNDER_ID) return ctx.answerCbQuery('❌ غير مصرح.');
-  const targetUserId = parseInt(ctx.match[1]);
-  await ctx.answerCbQuery('✅ تم');
-  await bot.telegram.sendMessage(targetUserId,
-    `✅ *تم تفعيل اشتراكك بنجاح!*\n\n` +
-    `تحقق من بريدك الإلكتروني للحصول على تفاصيل التفعيل.\n\nبتوفيق! 🎉`,
-    { parse_mode: 'Markdown' }
-  );
-  await ctx.editMessageCaption('✅ تم التفعيل', { parse_mode: 'Markdown' });
+bot.action(/^man_ok_(\d+)$/, async (ctx) => {
+  if (ctx.from.id !== FOUNDER_ID) return ctx.answerCbQuery('Not authorized.');
+  const uid = parseInt(ctx.match[1]);
+  const lang = getLang(uid);
+  await ctx.answerCbQuery('✅');
+  await bot.telegram.sendMessage(uid, T[lang].activated, { parse_mode: 'Markdown' });
+  try { await ctx.editMessageCaption('✅ Activated'); } catch (_) {}
 });
 
-bot.action(/^manual_reject_(\d+)$/, async (ctx) => {
-  if (ctx.from.id !== FOUNDER_ID) return ctx.answerCbQuery('❌ غير مصرح.');
-  const targetUserId = parseInt(ctx.match[1]);
-  await ctx.answerCbQuery('❌ تم الرفض');
-  await bot.telegram.sendMessage(targetUserId,
-    `❌ *تم رفض إثبات الدفع*\n\n` +
-    `للأسف لم يتم قبول إثبات الدفع. تواصل مع ${PAYMENT_INFO.support} للاستفسار.`,
-    { parse_mode: 'Markdown' }
-  );
-  await ctx.editMessageCaption('❌ تم الرفض', { parse_mode: 'Markdown' });
+bot.action(/^man_no_(\d+)$/, async (ctx) => {
+  if (ctx.from.id !== FOUNDER_ID) return ctx.answerCbQuery('Not authorized.');
+  const uid = parseInt(ctx.match[1]);
+  const lang = getLang(uid);
+  await ctx.answerCbQuery('❌');
+  await bot.telegram.sendMessage(uid, T[lang].rejected_msg, { parse_mode: 'Markdown' });
+  try { await ctx.editMessageCaption('❌ Rejected'); } catch (_) {}
 });
 
-// ─── Notify Founder (Stars) ───────────────────────────────────
-
-async function notifyFounder(ctx, subscription) {
+// ─── Notify Founder ───────────────────────────────────────────
+async function notifyFounder(subscription) {
   try {
-    const userInfo = userInfoCache.get(subscription.user_id) || {};
-    const message =
-      `🔔 *طلب اشتراك جديد!*\n\n` +
-      `👤 المستخدم: @${subscription.username || 'غير متوفر'} (\`${subscription.user_id}\`)\n` +
-      `📧 الإيميل: \`${subscription.email}\`\n` +
-      `💰 الدفع: ${subscription.payment_amount} ⭐\n` +
-      `🆔 رقم الطلب: #${subscription.id}\n` +
-      `📅 ${new Date(subscription.created_at).toLocaleString('ar-SA')}`;
-
-    const keyboard = Markup.inlineKeyboard([
-      [
-        Markup.button.callback('✅ تم التفعيل', `approve_${subscription.id}`),
-        Markup.button.callback('❌ مرفوض', `reject_${subscription.id}`)
-      ]
-    ]);
-
-    await bot.telegram.sendMessage(FOUNDER_ID, message, {
+    const msg =
+      `🔔 *New Order  #${subscription.id}*\n\n` +
+      `👤 @${subscription.username || 'N/A'}  (\`${subscription.user_id}\`)\n` +
+      `📧 \`${subscription.email}\`\n` +
+      `💰 ${subscription.payment_amount} ⭐\n` +
+      `📅 ${new Date(subscription.created_at).toLocaleString('en-GB')}`;
+    await bot.telegram.sendMessage(FOUNDER_ID, msg, {
       parse_mode: 'Markdown',
-      reply_markup: keyboard.reply_markup
+      reply_markup: Markup.inlineKeyboard([
+        [Markup.button.callback('✅  Activate', `ok_${subscription.id}`), Markup.button.callback('❌  Reject', `no_${subscription.id}`)],
+      ]).reply_markup,
     });
-  } catch (error) {
-    console.error('notifyFounder error:', error);
-  }
+  } catch (err) { console.error('notifyFounder error:', err); }
 }
 
-// ─── Approve / Reject (Stars) ─────────────────────────────────
-
-bot.action(/^(approve|reject)_(\d+)$/, async (ctx) => {
-  if (ctx.from.id !== FOUNDER_ID) return ctx.answerCbQuery('❌ غير مصرح.');
-  const action = ctx.match[1];
-  const subscriptionId = parseInt(ctx.match[2]);
-
+// ─── Stars Approve / Reject ───────────────────────────────────
+bot.action(/^ok_(\d+)$/, async (ctx) => {
+  if (ctx.from.id !== FOUNDER_ID) return ctx.answerCbQuery('Not authorized.');
+  const subId = parseInt(ctx.match[1]);
   try {
-    const status = action === 'approve' ? 'approved' : 'rejected';
-    const { data, error } = await supabase
-      .from('subscriptions')
-      .update({ status, updated_at: new Date().toISOString() })
-      .eq('id', subscriptionId)
-      .select().single();
-
-    if (error) return ctx.answerCbQuery('❌ خطأ في التحديث.');
-
-    if (action === 'approve') {
-      await bot.telegram.sendMessage(data.user_id,
-        `✅ *تم تفعيل اشتراكك بنجاح!*\n\n` +
-        `اذهب إلى بريدك الإلكتروني واضغط على رابط التفعيل.\n\nبتوفيق! 🎉`,
-        { parse_mode: 'Markdown' }
-      );
-      await ctx.answerCbQuery('✅ تم التفعيل');
-    } else {
-      await bot.telegram.sendMessage(data.user_id,
-        `❌ *تم رفض طلبك*\n\nللاستفسار تواصل مع ${PAYMENT_INFO.support}`,
-        { parse_mode: 'Markdown' }
-      );
-      await ctx.answerCbQuery('❌ تم الرفض');
-    }
+    const { data } = await supabase.from('subscriptions').update({ status: 'approved', updated_at: new Date().toISOString() }).eq('id', subId).select().single();
+    const lang = getLang(data.user_id);
+    await bot.telegram.sendMessage(data.user_id, T[lang].activated, { parse_mode: 'Markdown' });
+    await ctx.answerCbQuery('✅ Activated');
     await ctx.editMessageReplyMarkup(null);
-  } catch (error) {
-    console.error('approve/reject error:', error);
-    ctx.answerCbQuery('❌ حدث خطأ.');
-  }
+  } catch (_) { ctx.answerCbQuery('Error.'); }
+});
+
+bot.action(/^no_(\d+)$/, async (ctx) => {
+  if (ctx.from.id !== FOUNDER_ID) return ctx.answerCbQuery('Not authorized.');
+  const subId = parseInt(ctx.match[1]);
+  try {
+    const { data } = await supabase.from('subscriptions').update({ status: 'rejected', updated_at: new Date().toISOString() }).eq('id', subId).select().single();
+    const lang = getLang(data.user_id);
+    await bot.telegram.sendMessage(data.user_id, T[lang].rejected_msg, { parse_mode: 'Markdown' });
+    await ctx.answerCbQuery('❌ Rejected');
+    await ctx.editMessageReplyMarkup(null);
+  } catch (_) { ctx.answerCbQuery('Error.'); }
+});
+
+// ─── Admin ────────────────────────────────────────────────────
+bot.command('admin', async (ctx) => {
+  if (ctx.from.id !== FOUNDER_ID) return ctx.reply('❌ Not authorized.');
+  const adminKb = Markup.inlineKeyboard([
+    [Markup.button.callback('📊  Statistics',  'adm_stats')],
+    [Markup.button.callback('📢  Broadcast',   'adm_broadcast')],
+    [Markup.button.callback('‹  Back',         'nav_main')],
+  ]);
+  await ctx.reply('👨‍💼 *Admin Panel*', { parse_mode: 'Markdown', reply_markup: adminKb.reply_markup });
+});
+
+bot.action('adm_stats', async (ctx) => {
+  if (ctx.from.id !== FOUNDER_ID) return ctx.answerCbQuery('Not authorized.');
+  await ctx.answerCbQuery();
+  try {
+    const { data } = await supabase.from('subscriptions').select('status, payment_amount');
+    const total    = data?.length || 0;
+    const approved = data?.filter(o => o.status === 'approved').length || 0;
+    const pending  = data?.filter(o => o.status === 'pending').length  || 0;
+    const rejected = data?.filter(o => o.status === 'rejected').length || 0;
+    const revenue  = data?.filter(o => o.status === 'approved').reduce((s, o) => s + (o.payment_amount || 0), 0) || 0;
+    const adminKb = Markup.inlineKeyboard([[Markup.button.callback('‹  Back', 'nav_main')]]);
+    await editOrReply(ctx,
+      `📊 *Statistics*\n\n` +
+      `📦  Total:      *${total}*\n` +
+      `✅  Activated:  *${approved}*\n` +
+      `🕐  Pending:    *${pending}*\n` +
+      `❌  Rejected:   *${rejected}*\n\n` +
+      `💰  Revenue:    *${revenue} ⭐*`,
+      { parse_mode: 'Markdown', reply_markup: adminKb.reply_markup }
+    );
+  } catch (_) { ctx.reply('❌ Error loading stats.'); }
+});
+
+bot.action('adm_broadcast', async (ctx) => {
+  if (ctx.from.id !== FOUNDER_ID) return ctx.answerCbQuery('Not authorized.');
+  await ctx.answerCbQuery();
+  broadcastMode.set(FOUNDER_ID, true);
+  await ctx.reply(`📢 *Broadcast Mode*\n\nSend your message now.\n\n_/cancel to abort._`, { parse_mode: 'Markdown' });
+});
+
+// ─── /help & /contact ─────────────────────────────────────────
+bot.command('help', async (ctx) => {
+  const lang = getLang(ctx.from.id);
+  await ctx.reply(
+    lang === 'ar'
+      ? `📚 *المساعدة*\n\n• /start — القائمة الرئيسية\n• /orders — طلباتي\n• /lang — تغيير اللغة\n• /contact — الدعم`
+      : `📚 *Help*\n\n• /start — Main menu\n• /orders — My orders\n• /lang — Change language\n• /contact — Support`,
+    { parse_mode: 'Markdown', reply_markup: kb.backMain(lang).reply_markup }
+  );
+});
+
+bot.command('contact', async (ctx) => {
+  const lang = getLang(ctx.from.id);
+  await ctx.reply(T[lang].support_text, { parse_mode: 'Markdown', reply_markup: kb.backMain(lang).reply_markup });
 });
 
 // ─── Error Handler ────────────────────────────────────────────
-
 bot.catch((err, ctx) => {
-  console.error('❌ Bot error:', err.message);
-  try { if (ctx?.reply) ctx.reply('❌ حدث خطأ. الرجاء المحاولة لاحقاً.'); } catch (_) {}
+  console.error('Bot error:', err.message);
+  try { if (ctx?.reply) ctx.reply('❌ Something went wrong. Please try again.'); } catch (_) {}
 });
 
-console.log('✅ جميع handlers تم تسجيلها بنجاح');
+console.log('✅ All handlers registered');
 module.exports = bot;
