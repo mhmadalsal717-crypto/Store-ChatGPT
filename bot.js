@@ -567,4 +567,4 @@ bot.action('verify_human', async (ctx) => {
   verifiedUsers.add(userId);
   await ctx.answerCbQuery('✅');
   await ctx.editMessageText(T[lang].verify_ok, { parse_mode: 'Markdown' });
-  setTimeout(async () => { try { await showMain(ctx, false); } catch (_) {} }, 700)
+  setTimeout(async () => { try { await showMain(ctx, false); } catch (_) {} }, 7
