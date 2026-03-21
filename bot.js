@@ -547,6 +547,18 @@ bot.use(async (ctx, next) => {
 bot.start(async (ctx) => {
   const userId = ctx.from.id;
   const lang = getLang(userId);
+
+  // Track user in database
+  try {
+    await supabase.from('users').upsert({
+      user_id: userId,
+      username: ctx.from.username || null,
+      first_name: ctx.from.first_name || null,
+      lang: lang,
+      last_seen: new Date().toISOString(),
+    }, { onConflict: 'user_id' });
+  } catch (_) {}
+
   if (!verifiedUsers.has(userId)) {
     return ctx.reply(T[lang].verify_prompt, { parse_mode: 'Markdown', reply_markup: kb.verify(lang).reply_markup });
   }
@@ -906,18 +918,20 @@ bot.action('nav_admin', async (ctx) => {
   if (ctx.from.id !== FOUNDER_ID) return ctx.answerCbQuery('Not authorized.');
   await ctx.answerCbQuery();
   await editOrReply(ctx, '👨‍💼 *Admin Panel*', { parse_mode: 'Markdown', reply_markup: Markup.inlineKeyboard([
-    [Markup.button.callback('📊  Statistics', 'adm_stats')],
-    [Markup.button.callback('📢  Broadcast',  'adm_broadcast')],
-    [Markup.button.callback('‹  Back',        'nav_main')],
+    [Markup.button.callback('📊  Store Statistics', 'adm_stats')],
+    [Markup.button.callback('👥  User Statistics',  'adm_users')],
+    [Markup.button.callback('📢  Broadcast',         'adm_broadcast')],
+    [Markup.button.callback('‹  Back',               'nav_main')],
   ]).reply_markup });
 });
 
 bot.command('admin', async (ctx) => {
   if (ctx.from.id !== FOUNDER_ID) return ctx.reply('❌ Not authorized.');
   await ctx.reply('👨‍💼 *Admin Panel*', { parse_mode: 'Markdown', reply_markup: Markup.inlineKeyboard([
-    [Markup.button.callback('📊  Statistics', 'adm_stats')],
-    [Markup.button.callback('📢  Broadcast',  'adm_broadcast')],
-    [Markup.button.callback('‹  Back',        'nav_main')],
+    [Markup.button.callback('📊  Store Statistics', 'adm_stats')],
+    [Markup.button.callback('👥  User Statistics',  'adm_users')],
+    [Markup.button.callback('📢  Broadcast',         'adm_broadcast')],
+    [Markup.button.callback('‹  Back',               'nav_main')],
   ]).reply_markup });
 });
 
@@ -941,6 +955,56 @@ bot.action('adm_stats', async (ctx) => {
       { parse_mode: 'Markdown', reply_markup: Markup.inlineKeyboard([[Markup.button.callback('‹  Back', 'nav_main')]]).reply_markup }
     );
   } catch (_) { ctx.reply('❌ Error loading stats.'); }
+});
+
+bot.action('adm_users', async (ctx) => {
+  if (ctx.from.id !== FOUNDER_ID) return ctx.answerCbQuery('Not authorized.');
+  await ctx.answerCbQuery();
+  try {
+    const { data: users } = await supabase.from('users').select('user_id, lang, created_at');
+    const { data: orders } = await supabase.from('subscriptions').select('user_id, status');
+
+    const totalUsers    = users?.length || 0;
+    const arUsers       = users?.filter(u => u.lang === 'ar').length || 0;
+    const enUsers       = users?.filter(u => u.lang === 'en').length || 0;
+    const buyerIds      = [...new Set(orders?.map(o => o.user_id) || [])];
+    const totalBuyers   = buyerIds.length;
+    const activeUsers   = orders?.filter(o => o.status === 'approved').map(o => o.user_id);
+    const uniqueActive  = [...new Set(activeUsers || [])].length;
+    const convRate      = totalUsers > 0 ? ((totalBuyers / totalUsers) * 100).toFixed(1) : 0;
+
+    const today = new Date();
+    today.setHours(0,0,0,0);
+    const newToday = users?.filter(u => new Date(u.created_at) >= today).length || 0;
+
+    const adminKb = Markup.inlineKeyboard([[Markup.button.callback('‹  Back', 'nav_admin')]]);
+
+    await editOrReply(ctx,
+      `👥 *User Statistics*
+━━━━━━━━━━━━━━━━━━
+` +
+      `👤  _Total Users:_       *${totalUsers}*
+` +
+      `🆕  _New Today:_         *${newToday}*
+` +
+      `🛒  _Have Purchased:_    *${totalBuyers}*
+` +
+      `✅  _Active Subscribers:_ *${uniqueActive}*
+` +
+      `📈  _Conversion Rate:_   *${convRate}%*
+
+` +
+      `🌐 *Language Breakdown:*
+` +
+      `🇬🇧  English: *${enUsers}*
+` +
+      `🇸🇦  Arabic:  *${arUsers}*`,
+      { parse_mode: 'Markdown', reply_markup: adminKb.reply_markup }
+    );
+  } catch (err) {
+    console.error('adm_users error:', err);
+    ctx.reply('❌ Error loading user stats.');
+  }
 });
 
 bot.action('adm_broadcast', async (ctx) => {
