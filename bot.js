@@ -619,7 +619,7 @@ bot.action('cat_youtube', async (ctx) => {
   await ctx.answerCbQuery();
   const lang = getLang(ctx.from.id);
   try { await ctx.deleteMessage(); } catch (_) {}
-  await ctx.replyWithPhoto('https://images.unsplash.com/photo-1611162616475-46b635cb6868?q=100&w=2560&auto=format&fit=crop', {
+  await ctx.replyWithPhoto('https://i.postimg.cc/nLMhGL8V/f013c8552c71d1f31fbd5e8430d2457c.jpg', {
     caption: T[lang].youtube_info,
     parse_mode: 'Markdown',
     reply_markup: kb.youtube(lang).reply_markup,
@@ -630,7 +630,7 @@ bot.action('cat_netflix', async (ctx) => {
   await ctx.answerCbQuery();
   const lang = getLang(ctx.from.id);
   try { await ctx.deleteMessage(); } catch (_) {}
-  await ctx.replyWithPhoto('https://images.unsplash.com/photo-1522869635100-9f4c5e86aa37?q=100&w=2560&auto=format&fit=crop', {
+  await ctx.replyWithPhoto('https://i.postimg.cc/hjzhctpn/979161810ef2d1ab4d338e91fceb8b96.jpg', {
     caption: T[lang].netflix_info,
     parse_mode: 'Markdown',
     reply_markup: kb.netflix(lang).reply_markup,
@@ -641,7 +641,7 @@ bot.action('cat_shahid', async (ctx) => {
   await ctx.answerCbQuery();
   const lang = getLang(ctx.from.id);
   try { await ctx.deleteMessage(); } catch (_) {}
-  await ctx.replyWithPhoto('https://m.media-amazon.com/images/G/01/digital/video/magellan/merch/2021/SVOD_Partner_Shahid_1280x720_00.jpg', {
+  await ctx.replyWithPhoto('https://i.postimg.cc/vHz8Rnb6/9bb7347e380da518e4ebe55d9b63ad2a.jpg', {
     caption: T[lang].shahid_info,
     parse_mode: 'Markdown',
     reply_markup: kb.shahid(lang).reply_markup,
