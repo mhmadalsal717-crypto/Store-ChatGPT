@@ -618,17 +618,32 @@ bot.action('nav_products', async (ctx) => {
 bot.action('cat_youtube', async (ctx) => {
   await ctx.answerCbQuery();
   const lang = getLang(ctx.from.id);
-  await editOrReply(ctx, T[lang].youtube_info, { parse_mode: 'Markdown', reply_markup: kb.youtube(lang).reply_markup });
+  try { await ctx.deleteMessage(); } catch (_) {}
+  await ctx.replyWithPhoto('AgACAgEAAxkBAAFFYSZpvxhcfwvMfkT1uO3pFCI38PfqEQAC3AtrGxjM-UU6VQmt4eB16gEAAwIAA3gAAzoE', {
+    caption: T[lang].youtube_info,
+    parse_mode: 'Markdown',
+    reply_markup: kb.youtube(lang).reply_markup,
+  });
 });
 bot.action('cat_netflix', async (ctx) => {
   await ctx.answerCbQuery();
   const lang = getLang(ctx.from.id);
-  await editOrReply(ctx, T[lang].netflix_info, { parse_mode: 'Markdown', reply_markup: kb.netflix(lang).reply_markup });
+  try { await ctx.deleteMessage(); } catch (_) {}
+  await ctx.replyWithPhoto('AgACAgEAAxkBAAFFYSdpvxhcsW4VFjuRG6X57dGUpSYydwAC3QtrGxjM-UW-Mhm3bMcksQEAAwIAA3gAAzoE', {
+    caption: T[lang].netflix_info,
+    parse_mode: 'Markdown',
+    reply_markup: kb.netflix(lang).reply_markup,
+  });
 });
 bot.action('cat_shahid', async (ctx) => {
   await ctx.answerCbQuery();
   const lang = getLang(ctx.from.id);
-  await editOrReply(ctx, T[lang].shahid_info, { parse_mode: 'Markdown', reply_markup: kb.shahid(lang).reply_markup });
+  try { await ctx.deleteMessage(); } catch (_) {}
+  await ctx.replyWithPhoto('AgACAgEAAxkBAAFFYSVpvxhcvfPUnOxgOnDf8rF_qsUwkgAC2wtrGxjM-UVDOdz_nBvY-AEAAwIAA3gAAzoE', {
+    caption: T[lang].shahid_info,
+    parse_mode: 'Markdown',
+    reply_markup: kb.shahid(lang).reply_markup,
+  });
 });
 
 // ─── Plan Selection → Payment Method ─────────────────────────
@@ -637,10 +652,17 @@ Object.keys(PLANS).forEach((key) => {
     await ctx.answerCbQuery();
     const lang = getLang(ctx.from.id);
     const plan = PLANS[key];
-    await editOrReply(ctx, T[lang].choose_payment(plan), {
-      parse_mode: 'Markdown',
-      reply_markup: kb.payMethod(lang, key).reply_markup,
-    });
+    try {
+      await ctx.editMessageCaption(T[lang].choose_payment(plan), {
+        parse_mode: 'Markdown',
+        reply_markup: kb.payMethod(lang, key).reply_markup,
+      });
+    } catch (_) {
+      await editOrReply(ctx, T[lang].choose_payment(plan), {
+        parse_mode: 'Markdown',
+        reply_markup: kb.payMethod(lang, key).reply_markup,
+      });
+    }
   });
 });
 
