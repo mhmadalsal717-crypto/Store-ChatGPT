@@ -475,7 +475,7 @@ const kb = {
   main:     (l, userId) => {
     const rows = [
       [Markup.button.callback(T[l].products,     'nav_products')],
-      [Markup.button.callback(T[l].my_orders,    'nav_orders'),  Markup.button.callback(T[l].faq,          'nav_faq')],
+      [Markup.button.callback(T[l].my_orders,    'nav_orders'),  Markup.button.callback(T[l].faq, 'nav_faq')],
       [Markup.button.callback(T[l].support_btn,  'nav_support'), Markup.button.callback(T[l].payments_btn, 'nav_payments')],
       [Markup.button.callback(T[l].switch_lang,  'switch_lang')],
     ];
@@ -569,4 +569,5 @@ bot.action('verify_human', async (ctx) => {
   const userId = ctx.from.id;
   const lang = getLang(userId);
   verifiedUsers.add(userId);
-  await ctx.answerCbQuery(
+  await ctx.answerCbQuery('✅');
+  a
