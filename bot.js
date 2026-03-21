@@ -570,4 +570,405 @@ bot.action('verify_human', async (ctx) => {
   const lang = getLang(userId);
   verifiedUsers.add(userId);
   await ctx.answerCbQuery('✅');
-  a
+  await ctx.editMessageText(T[lang].verify_ok, { parse_mode: 'Markdown' });
+  setTimeout(async () => { try { await showMain(ctx, false); } catch (_) {} }, 700);
+});
+
+// ─── Lang Switch ──────────────────────────────────────────────
+bot.action('switch_lang', async (ctx) => {
+  const userId = ctx.from.id;
+  const next = getLang(userId) === 'en' ? 'ar' : 'en';
+  userLang.set(userId, next);
+  await ctx.answerCbQuery(next === 'ar' ? '🇸🇦 العربية' : '🇬🇧 English');
+  await showMain(ctx, true);
+});
+bot.action('set_lang_en', async (ctx) => { userLang.set(ctx.from.id, 'en'); await ctx.answerCbQuery('🇬🇧 English'); await showMain(ctx, false); });
+bot.action('set_lang_ar', async (ctx) => { userLang.set(ctx.from.id, 'ar'); await ctx.answerCbQuery('🇸🇦 العربية'); await showMain(ctx, false); });
+
+// ─── Main Menu ────────────────────────────────────────────────
+async function showMain(ctx, isEdit) {
+  const userId = ctx.from.id;
+  const lang = getLang(userId);
+  const name = ctx.from?.first_name || (lang === 'ar' ? 'عزيزي' : 'there');
+  const extra = { parse_mode: 'Markdown', reply_markup: kb.main(lang, userId).reply_markup };
+  if (isEdit) await editOrReply(ctx, T[lang].welcome(name), extra);
+  else await ctx.reply(T[lang].welcome(name), extra);
+}
+bot.action('nav_main', async (ctx) => { await ctx.answerCbQuery(); await showMain(ctx, true); });
+
+// ─── Products ─────────────────────────────────────────────────
+bot.action('nav_products', async (ctx) => {
+  await ctx.answerCbQuery();
+  const lang = getLang(ctx.from.id);
+  await editOrReply(ctx, T[lang].browse, { parse_mode: 'Markdown', reply_markup: kb.products(lang).reply_markup });
+});
+
+bot.action('cat_youtube', async (ctx) => {
+  await ctx.answerCbQuery();
+  const lang = getLang(ctx.from.id);
+  await editOrReply(ctx, T[lang].youtube_info, { parse_mode: 'Markdown', reply_markup: kb.youtube(lang).reply_markup });
+});
+bot.action('cat_netflix', async (ctx) => {
+  await ctx.answerCbQuery();
+  const lang = getLang(ctx.from.id);
+  await editOrReply(ctx, T[lang].netflix_info, { parse_mode: 'Markdown', reply_markup: kb.netflix(lang).reply_markup });
+});
+bot.action('cat_shahid', async (ctx) => {
+  await ctx.answerCbQuery();
+  const lang = getLang(ctx.from.id);
+  await editOrReply(ctx, T[lang].shahid_info, { parse_mode: 'Markdown', reply_markup: kb.shahid(lang).reply_markup });
+});
+
+// ─── Plan Selection → Payment Method ─────────────────────────
+Object.keys(PLANS).forEach((key) => {
+  bot.action(`sel_${key}`, async (ctx) => {
+    await ctx.answerCbQuery();
+    const lang = getLang(ctx.from.id);
+    const plan = PLANS[key];
+    await editOrReply(ctx, T[lang].choose_payment(plan), {
+      parse_mode: 'Markdown',
+      reply_markup: kb.payMethod(lang, key).reply_markup,
+    });
+  });
+});
+
+// ─── Pay with Stars ───────────────────────────────────────────
+Object.keys(PLANS).forEach((key) => {
+  bot.action(`pay_stars_${key}`, async (ctx) => {
+    const plan = PLANS[key];
+    try {
+      await ctx.answerCbQuery();
+      await ctx.replyWithInvoice({
+        title: plan.title,
+        description: plan.description,
+        payload: `${key}_${ctx.from.id}_${Date.now()}`,
+        provider_token: '',
+        currency: 'XTR',
+        prices: [{ label: plan.title, amount: plan.amount }],
+      });
+    } catch (err) {
+      try { await ctx.answerCbQuery('❌ Error. Try again.', true); } catch (_) {}
+    }
+  });
+});
+
+// ─── Pay with Binance / USDT (manual) ────────────────────────
+const manualPayInfo = (lang, method, planKey) => {
+  const plan = PLANS[planKey];
+  const texts = {
+    binance: T[lang].binance_text,
+    trc20:   T[lang].trc20_text,
+    bep20:   T[lang].bep20_text,
+    erc20:   T[lang].erc20_text,
+  };
+  const header = lang === 'ar'
+    ? `\n\n📦 *طلبك:* ${plan.emoji} ${plan.service} · _${plan.period_ar}_ · *${plan.amount} ⭐*\n━━━━━━━━━━━━━━━━━━\n`
+    : `\n\n📦 *Your order:* ${plan.emoji} ${plan.service} · _${plan.period}_ · *${plan.amount} ⭐*\n━━━━━━━━━━━━━━━━━━\n`;
+  return texts[method] + header;
+};
+
+['binance', 'trc20', 'bep20', 'erc20'].forEach((method) => {
+  Object.keys(PLANS).forEach((planKey) => {
+    bot.action(`pay_${method}_${planKey}`, async (ctx) => {
+      await ctx.answerCbQuery();
+      const lang = getLang(ctx.from.id);
+      const catKey = `cat_${planKey.split('_')[0]}`;
+      await editOrReply(ctx, manualPayInfo(lang, method, planKey), {
+        parse_mode: 'Markdown',
+        reply_markup: Markup.inlineKeyboard([
+          [Markup.button.callback(T[lang].back, `sel_${planKey}`)],
+        ]).reply_markup,
+      });
+    });
+  });
+});
+
+// ─── FAQ ─────────────────────────────────────────────────────
+bot.action('nav_faq', async (ctx) => {
+  await ctx.answerCbQuery();
+  const lang = getLang(ctx.from.id);
+  await editOrReply(ctx, T[lang].faq_text, { parse_mode: 'Markdown', reply_markup: kb.backMain(lang).reply_markup });
+});
+
+// ─── Support ─────────────────────────────────────────────────
+bot.action('nav_support', async (ctx) => {
+  await ctx.answerCbQuery();
+  const lang = getLang(ctx.from.id);
+  await editOrReply(ctx, T[lang].support_text, { parse_mode: 'Markdown', reply_markup: kb.backMain(lang).reply_markup });
+});
+
+// ─── Payments Info ────────────────────────────────────────────
+bot.action('nav_payments', async (ctx) => {
+  await ctx.answerCbQuery();
+  const lang = getLang(ctx.from.id);
+  await editOrReply(ctx, T[lang].payments_text, { parse_mode: 'Markdown', reply_markup: kb.payments(lang).reply_markup });
+});
+bot.action('pm_stars', async (ctx) => {
+  await ctx.answerCbQuery();
+  const lang = getLang(ctx.from.id);
+  await editOrReply(ctx, T[lang].stars_text, { parse_mode: 'Markdown', reply_markup: kb.starsBack(lang).reply_markup });
+});
+bot.action('pm_binance', async (ctx) => {
+  await ctx.answerCbQuery();
+  const lang = getLang(ctx.from.id);
+  await editOrReply(ctx, T[lang].binance_text, { parse_mode: 'Markdown', reply_markup: kb.backPayments(lang).reply_markup });
+});
+bot.action('pm_usdt', async (ctx) => {
+  await ctx.answerCbQuery();
+  const lang = getLang(ctx.from.id);
+  await editOrReply(ctx, T[lang].usdt_text, { parse_mode: 'Markdown', reply_markup: kb.usdt(lang).reply_markup });
+});
+bot.action('pm_trc20', async (ctx) => {
+  await ctx.answerCbQuery();
+  const lang = getLang(ctx.from.id);
+  await editOrReply(ctx, T[lang].trc20_text, { parse_mode: 'Markdown', reply_markup: kb.backUsdt(lang).reply_markup });
+});
+bot.action('pm_bep20', async (ctx) => {
+  await ctx.answerCbQuery();
+  const lang = getLang(ctx.from.id);
+  await editOrReply(ctx, T[lang].bep20_text, { parse_mode: 'Markdown', reply_markup: kb.backUsdt(lang).reply_markup });
+});
+bot.action('pm_erc20', async (ctx) => {
+  await ctx.answerCbQuery();
+  const lang = getLang(ctx.from.id);
+  await editOrReply(ctx, T[lang].erc20_text, { parse_mode: 'Markdown', reply_markup: kb.backUsdt(lang).reply_markup });
+});
+
+// ─── My Orders ───────────────────────────────────────────────
+bot.action('nav_orders', async (ctx) => { await ctx.answerCbQuery(); await showOrders(ctx, true); });
+bot.command('orders', async (ctx) => { await showOrders(ctx, false); });
+
+async function showOrders(ctx, isEdit) {
+  const userId = ctx.from.id;
+  const lang = getLang(userId);
+  try {
+    const { data } = await supabase.from('subscriptions').select('*').eq('user_id', userId).order('created_at', { ascending: false }).limit(5);
+    const extra = { parse_mode: 'Markdown', reply_markup: kb.backMain(lang).reply_markup };
+    if (!data?.length) {
+      return isEdit ? editOrReply(ctx, T[lang].orders_empty, extra) : ctx.reply(T[lang].orders_empty, extra);
+    }
+    let msg = T[lang].orders_title(data.length);
+    data.forEach((o, i) => { msg += T[lang].order_row(o, i); });
+    return isEdit ? editOrReply(ctx, msg, extra) : ctx.reply(msg, extra);
+  } catch (_) { ctx.reply('❌ Error loading orders.'); }
+}
+
+// ─── Pre-checkout ─────────────────────────────────────────────
+bot.on('pre_checkout_query', async (ctx) => {
+  try { await ctx.answerPreCheckoutQuery(true); }
+  catch (_) { try { await ctx.answerPreCheckoutQuery(false, { error_message: 'Error. Try again.' }); } catch (__) {} }
+});
+
+// ─── Successful Payment ───────────────────────────────────────
+bot.on('successful_payment', async (ctx) => {
+  const userId = ctx.from.id;
+  const lang = getLang(userId);
+  const username = ctx.from.username || ctx.from.first_name || 'Unknown';
+  const payment = ctx.message.successful_payment;
+  try {
+    userInfoCache.set(userId, { first_name: ctx.from.first_name || '', username });
+    const amount = payment.currency === 'XTR' ? payment.total_amount : payment.total_amount / 100;
+    const { data, error } = await supabase.from('subscriptions')
+      .insert({ user_id: userId, username, status: 'pending', payment_amount: amount, payment_currency: payment.currency, email: null })
+      .select().single();
+    if (error) return ctx.reply(`❌ Error. Contact ${PAYMENT_INFO.support}`);
+    pendingEmail.set(userId, data.id);
+    await ctx.reply(T[lang].pay_received, { parse_mode: 'Markdown' });
+  } catch (_) {
+    try { await ctx.reply(`❌ Error. Contact ${PAYMENT_INFO.support}`); } catch (__) {}
+  }
+});
+
+// ─── Text Handler ─────────────────────────────────────────────
+bot.on('text', async (ctx) => {
+  const userId = ctx.from.id;
+  const lang = getLang(userId);
+  const text = ctx.message.text.trim();
+
+  if (text === '/cancel') {
+    broadcastMode.delete(userId);
+    pendingEmail.delete(userId);
+    return ctx.reply('❌ Cancelled.', { reply_markup: kb.backMain(lang).reply_markup });
+  }
+  if (text.startsWith('/')) return;
+
+  if (userId === FOUNDER_ID && broadcastMode.get(FOUNDER_ID)) {
+    broadcastMode.delete(FOUNDER_ID);
+    try {
+      const { data: users } = await supabase.from('subscriptions').select('user_id');
+      if (!users?.length) return ctx.reply('No users found.');
+      const unique = [...new Set(users.map(u => u.user_id))];
+      await ctx.reply(`📢 Sending to ${unique.length} users...`);
+      let sent = 0, failed = 0;
+      for (const uid of unique) {
+        try { await bot.telegram.sendMessage(uid, text, { parse_mode: 'Markdown' }); sent++; }
+        catch (_) { failed++; }
+        await new Promise(r => setTimeout(r, 50));
+      }
+      return ctx.reply(`✅ Done!\n✓ ${sent} sent\n✗ ${failed} failed`);
+    } catch (_) { return ctx.reply('❌ Broadcast failed.'); }
+  }
+
+  if (pendingEmail.has(userId)) {
+    const subId = pendingEmail.get(userId);
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(text)) {
+      return ctx.reply(T[lang].email_invalid, { parse_mode: 'Markdown' });
+    }
+    try {
+      const { data, error } = await supabase.from('subscriptions')
+        .update({ email: text, updated_at: new Date().toISOString() })
+        .eq('id', subId).select().single();
+      if (error) return ctx.reply('❌ Error. Try again.');
+      pendingEmail.delete(userId);
+      await notifyFounder(data);
+      await ctx.reply(T[lang].email_saved, { parse_mode: 'Markdown' });
+    } catch (_) { ctx.reply('❌ Error. Try again.'); }
+  }
+});
+
+// ─── Photo ────────────────────────────────────────────────────
+bot.on('photo', async (ctx) => {
+  const userId = ctx.from.id;
+  const lang = getLang(userId);
+  const username = ctx.from.username || ctx.from.first_name || 'Unknown';
+  try {
+    const fileId = ctx.message.photo[ctx.message.photo.length - 1].file_id;
+    const caption = ctx.message.caption || '—';
+    await bot.telegram.sendPhoto(FOUNDER_ID, fileId, {
+      caption: `📸 *Manual Payment*\n\n👤 @${username}  (\`${userId}\`)\n📝 _${caption}_`,
+      parse_mode: 'Markdown',
+      reply_markup: Markup.inlineKeyboard([
+        [Markup.button.callback('✅  Activate', `man_ok_${userId}`), Markup.button.callback('❌  Reject', `man_no_${userId}`)],
+      ]).reply_markup,
+    });
+    await ctx.reply(T[lang].manual_received, { parse_mode: 'Markdown' });
+  } catch (err) { console.error('Photo error:', err.message); }
+});
+
+bot.action(/^man_ok_(\d+)$/, async (ctx) => {
+  if (ctx.from.id !== FOUNDER_ID) return ctx.answerCbQuery('Not authorized.');
+  const uid = parseInt(ctx.match[1]);
+  await ctx.answerCbQuery('✅');
+  await bot.telegram.sendMessage(uid, T[getLang(uid)].activated, { parse_mode: 'Markdown' });
+  try { await ctx.editMessageCaption('✅ Activated'); } catch (_) {}
+});
+
+bot.action(/^man_no_(\d+)$/, async (ctx) => {
+  if (ctx.from.id !== FOUNDER_ID) return ctx.answerCbQuery('Not authorized.');
+  const uid = parseInt(ctx.match[1]);
+  await ctx.answerCbQuery('❌');
+  await bot.telegram.sendMessage(uid, T[getLang(uid)].rejected_msg, { parse_mode: 'Markdown' });
+  try { await ctx.editMessageCaption('❌ Rejected'); } catch (_) {}
+});
+
+// ─── Notify Founder ───────────────────────────────────────────
+async function notifyFounder(subscription) {
+  try {
+    const msg =
+      `🔔 *New Order  #${subscription.id}*\n` +
+      `━━━━━━━━━━━━━━━━━━\n` +
+      `👤 @${subscription.username || 'N/A'}  (\`${subscription.user_id}\`)\n` +
+      `📧 \`${subscription.email}\`\n` +
+      `💰 *${subscription.payment_amount} ⭐*\n` +
+      `📅 ${new Date(subscription.created_at).toLocaleString('en-GB')}`;
+    await bot.telegram.sendMessage(FOUNDER_ID, msg, {
+      parse_mode: 'Markdown',
+      reply_markup: Markup.inlineKeyboard([
+        [Markup.button.callback('✅  Activate', `ok_${subscription.id}`), Markup.button.callback('❌  Reject', `no_${subscription.id}`)],
+      ]).reply_markup,
+    });
+  } catch (err) { console.error('notifyFounder:', err); }
+}
+
+// ─── Stars Approve / Reject ───────────────────────────────────
+bot.action(/^ok_(\d+)$/, async (ctx) => {
+  if (ctx.from.id !== FOUNDER_ID) return ctx.answerCbQuery('Not authorized.');
+  try {
+    const { data } = await supabase.from('subscriptions').update({ status: 'approved', updated_at: new Date().toISOString() }).eq('id', parseInt(ctx.match[1])).select().single();
+    await bot.telegram.sendMessage(data.user_id, T[getLang(data.user_id)].activated, { parse_mode: 'Markdown' });
+    await ctx.answerCbQuery('✅ Activated');
+    await ctx.editMessageReplyMarkup(null);
+  } catch (_) { ctx.answerCbQuery('Error.'); }
+});
+
+bot.action(/^no_(\d+)$/, async (ctx) => {
+  if (ctx.from.id !== FOUNDER_ID) return ctx.answerCbQuery('Not authorized.');
+  try {
+    const { data } = await supabase.from('subscriptions').update({ status: 'rejected', updated_at: new Date().toISOString() }).eq('id', parseInt(ctx.match[1])).select().single();
+    await bot.telegram.sendMessage(data.user_id, T[getLang(data.user_id)].rejected_msg, { parse_mode: 'Markdown' });
+    await ctx.answerCbQuery('❌ Rejected');
+    await ctx.editMessageReplyMarkup(null);
+  } catch (_) { ctx.answerCbQuery('Error.'); }
+});
+
+// ─── Admin ────────────────────────────────────────────────────
+bot.action('nav_admin', async (ctx) => {
+  if (ctx.from.id !== FOUNDER_ID) return ctx.answerCbQuery('Not authorized.');
+  await ctx.answerCbQuery();
+  await editOrReply(ctx, '👨‍💼 *Admin Panel*', { parse_mode: 'Markdown', reply_markup: Markup.inlineKeyboard([
+    [Markup.button.callback('📊  Statistics', 'adm_stats')],
+    [Markup.button.callback('📢  Broadcast',  'adm_broadcast')],
+    [Markup.button.callback('‹  Back',        'nav_main')],
+  ]).reply_markup });
+});
+
+bot.command('admin', async (ctx) => {
+  if (ctx.from.id !== FOUNDER_ID) return ctx.reply('❌ Not authorized.');
+  await ctx.reply('👨‍💼 *Admin Panel*', { parse_mode: 'Markdown', reply_markup: Markup.inlineKeyboard([
+    [Markup.button.callback('📊  Statistics', 'adm_stats')],
+    [Markup.button.callback('📢  Broadcast',  'adm_broadcast')],
+    [Markup.button.callback('‹  Back',        'nav_main')],
+  ]).reply_markup });
+});
+
+bot.action('adm_stats', async (ctx) => {
+  if (ctx.from.id !== FOUNDER_ID) return ctx.answerCbQuery('Not authorized.');
+  await ctx.answerCbQuery();
+  try {
+    const { data } = await supabase.from('subscriptions').select('status, payment_amount');
+    const total    = data?.length || 0;
+    const approved = data?.filter(o => o.status === 'approved').length || 0;
+    const pending  = data?.filter(o => o.status === 'pending').length  || 0;
+    const rejected = data?.filter(o => o.status === 'rejected').length || 0;
+    const revenue  = data?.filter(o => o.status === 'approved').reduce((s, o) => s + (o.payment_amount || 0), 0) || 0;
+    await editOrReply(ctx,
+      `📊 *Store Statistics*\n━━━━━━━━━━━━━━━━━━\n` +
+      `📦  _Total Orders:_   *${total}*\n` +
+      `✅  _Activated:_      *${approved}*\n` +
+      `🕐  _Pending:_        *${pending}*\n` +
+      `❌  _Rejected:_       *${rejected}*\n\n` +
+      `💰  _Total Revenue:_  *${revenue} ⭐*`,
+      { parse_mode: 'Markdown', reply_markup: Markup.inlineKeyboard([[Markup.button.callback('‹  Back', 'nav_main')]]).reply_markup }
+    );
+  } catch (_) { ctx.reply('❌ Error loading stats.'); }
+});
+
+bot.action('adm_broadcast', async (ctx) => {
+  if (ctx.from.id !== FOUNDER_ID) return ctx.answerCbQuery('Not authorized.');
+  await ctx.answerCbQuery();
+  broadcastMode.set(FOUNDER_ID, true);
+  await ctx.reply(`📢 *Broadcast Mode*\n\n_Send your message now. Use /cancel to abort._`, { parse_mode: 'Markdown' });
+});
+
+bot.command('help', async (ctx) => {
+  const lang = getLang(ctx.from.id);
+  await ctx.reply(
+    lang === 'ar'
+      ? `📚 *المساعدة*\n━━━━━━━━━━━━━━━━━━\n• /start — القائمة الرئيسية\n• /orders — طلباتي\n• /lang — تغيير اللغة\n• /contact — الدعم`
+      : `📚 *Help*\n━━━━━━━━━━━━━━━━━━\n• /start — Main menu\n• /orders — My orders\n• /lang — Change language\n• /contact — Support`,
+    { parse_mode: 'Markdown', reply_markup: kb.backMain(lang).reply_markup }
+  );
+});
+
+bot.command('contact', async (ctx) => {
+  const lang = getLang(ctx.from.id);
+  await ctx.reply(T[lang].support_text, { parse_mode: 'Markdown', reply_markup: kb.backMain(lang).reply_markup });
+});
+
+bot.catch((err, ctx) => {
+  console.error('Bot error:', err.message);
+  try { if (ctx?.reply) ctx.reply('❌ Something went wrong. Please try again.'); } catch (_) {}
+});
+
+console.log('✅ All handlers registered');
+module.exports = bot;
