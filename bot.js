@@ -619,27 +619,29 @@ bot.action('cat_youtube', async (ctx) => {
   await ctx.answerCbQuery();
   const lang = getLang(ctx.from.id);
   try { await ctx.deleteMessage(); } catch (_) {}
-  await ctx.replyWithPhoto('https://upload.wikimedia.org/wikipedia/commons/thumb/b/b8/YouTube_Logo_2017.svg/512px-YouTube_Logo_2017.svg.png', {
+  await ctx.replyWithPhoto('https://images.unsplash.com/photo-1611162616475-46b635cb6868?q=100&w=2560&auto=format&fit=crop', {
     caption: T[lang].youtube_info,
     parse_mode: 'Markdown',
     reply_markup: kb.youtube(lang).reply_markup,
   });
 });
+
 bot.action('cat_netflix', async (ctx) => {
   await ctx.answerCbQuery();
   const lang = getLang(ctx.from.id);
   try { await ctx.deleteMessage(); } catch (_) {}
-  await ctx.replyWithPhoto('https://upload.wikimedia.org/wikipedia/commons/thumb/0/08/Netflix_2015_logo.svg/512px-Netflix_2015_logo.svg.png', {
+  await ctx.replyWithPhoto('https://images.unsplash.com/photo-1522869635100-9f4c5e86aa37?q=100&w=2560&auto=format&fit=crop', {
     caption: T[lang].netflix_info,
     parse_mode: 'Markdown',
     reply_markup: kb.netflix(lang).reply_markup,
   });
 });
+
 bot.action('cat_shahid', async (ctx) => {
   await ctx.answerCbQuery();
   const lang = getLang(ctx.from.id);
   try { await ctx.deleteMessage(); } catch (_) {}
-  await ctx.replyWithPhoto('https://upload.wikimedia.org/wikipedia/ar/2/25/Shahid_VOD_logo.png', {
+  await ctx.replyWithPhoto('https://m.media-amazon.com/images/G/01/digital/video/magellan/merch/2021/SVOD_Partner_Shahid_1280x720_00.jpg', {
     caption: T[lang].shahid_info,
     parse_mode: 'Markdown',
     reply_markup: kb.shahid(lang).reply_markup,
