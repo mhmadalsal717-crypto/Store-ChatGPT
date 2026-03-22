@@ -560,7 +560,7 @@ const kb = {
     [Markup.button.callback(T[l].back, 'back_to_products')],
   ]),
   payMethod: (l, planKey) => Markup.inlineKeyboard([
-    [Markup.button.callback('⭐  Telegram Stars', `pay_stars_${planKey}`)],
+    [Markup.button.callback(l === 'ar' ? '⭐  Telegram Stars · ادفع الآن' : '⭐  Telegram Stars · Pay Now', `pay_stars_${planKey}`)],
     [Markup.button.callback('🟡  Binance Pay', `pay_binance_${planKey}`), Markup.button.callback('🔵  USDT TRC20', `pay_trc20_${planKey}`)],
     [Markup.button.callback('🟡  USDT BEP20', `pay_bep20_${planKey}`), Markup.button.callback('🔷  USDT ERC20', `pay_erc20_${planKey}`)],
     [Markup.button.callback(T[l].back, `back_plan_${planKey}`)],
