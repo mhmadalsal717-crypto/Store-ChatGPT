@@ -601,9 +601,9 @@ const kb = {
   ]),
   payMethod: (l, planKey) => Markup.inlineKeyboard([
     [Markup.button.callback(l === 'ar' ? '⭐  Telegram Stars · ادفع الآن' : '⭐  Telegram Stars · Pay Now', `pay_stars_${planKey}`)],
-    [Markup.button.callback(l === 'ar' ? '💠  عملات رقمية · Crypto' : '💠  Crypto · NOWPayments', `pay_nowpay_${planKey}`)],
+    [Markup.button.callback(l === 'ar' ? '💠  عملات رقمية · Pay' : '💠  Crypto · Pay', `pay_nowpay_${planKey}`)],
     [Markup.button.callback('🟡  Binance Pay', `pay_binance_${planKey}`)],
-    [Markup.button.callback(T[l].back, `back_plan_${planKey}`)],
+    [Markup.button.callback(l === 'ar' ? '✖️  إغلاق' : '✖️  Close', `close_payment_${planKey}`)],
   ]),
   backMain:     (l) => Markup.inlineKeyboard([[Markup.button.callback(T[l].back_menu, 'nav_main')]]),
   payments:     (l) => Markup.inlineKeyboard([
@@ -1007,6 +1007,7 @@ Object.keys(PLANS).forEach((key) => {
 // ─── Pay with Stars ───────────────────────────────────────────
 Object.keys(PLANS).forEach((key) => {
   bot.action(`pay_stars_${key}`, async (ctx) => {
+    const lang = getLang(ctx.from.id);
     const plan = PLANS[key];
     try {
       await ctx.answerCbQuery();
@@ -1017,8 +1018,13 @@ Object.keys(PLANS).forEach((key) => {
         provider_token: '',
         currency: 'XTR',
         prices: [{ label: plan.title, amount: plan.amount }],
+        reply_markup: Markup.inlineKeyboard([
+          [Markup.button.pay(lang === 'ar' ? `⭐ ادفع ${plan.amount} Stars` : `⭐ Pay ${plan.amount} Stars`)],
+          [Markup.button.callback(lang === 'ar' ? '‹  رجوع' : '‹  Back', `show_pay_methods_${key}`)],
+        ]).reply_markup,
       });
     } catch (err) {
+      console.error('Stars error:', err.message);
       try { await ctx.answerCbQuery('❌ Error. Try again.', true); } catch (_) {}
     }
   });
@@ -1081,14 +1087,19 @@ Object.keys(PLANS).forEach((planKey) => {
     const userId = ctx.from.id;
     const username = ctx.from.username || ctx.from.first_name || 'Unknown';
 
-    const loadingMsg = await ctx.reply(T[lang].nowpay_text(plan), { parse_mode: 'Markdown' });
+    // أولاً نعدل الرسالة الحالية "جارٍ التوليد..."
+    try {
+      await ctx.editMessageCaption(T[lang].nowpay_text(plan), { parse_mode: 'Markdown' });
+    } catch (_) {
+      try { await ctx.editMessageText(T[lang].nowpay_text(plan), { parse_mode: 'Markdown' }); } catch (__) {}
+    }
 
     try {
       const payment = await createNowPayment(plan, userId);
 
       // حفظ الدفع في Supabase
       const invoiceId = payment.id || payment.invoice_id || String(Date.now());
-      const { data: sub } = await supabase.from('subscriptions').insert({
+      await supabase.from('subscriptions').insert({
         user_id: userId,
         username,
         status: 'pending',
@@ -1097,27 +1108,44 @@ Object.keys(PLANS).forEach((planKey) => {
         payment_method: 'nowpayments',
         nowpayment_id: invoiceId,
         email: null,
-      }).select().single();
+      });
 
-      // رابط الدفع - invoice API ترجع invoice_url مباشرة
+      // رابط الدفع
       const payUrl = payment.invoice_url || `https://nowpayments.io/payment/?iid=${payment.id}`;
 
       const payBtn = Markup.inlineKeyboard([
         [Markup.button.url(lang === 'ar' ? '💠 ادفع الآن' : '💠 Pay Now', payUrl)],
-        [Markup.button.callback(T[lang].back, `show_pay_methods_${planKey}`)],
+        [Markup.button.callback(lang === 'ar' ? '‹  رجوع' : '‹  Back', `show_pay_methods_${planKey}`)],
       ]);
 
-      try { await ctx.telegram.deleteMessage(ctx.chat.id, loadingMsg.message_id); } catch (_) {}
-
-      await ctx.reply(T[lang].nowpay_link(plan, payUrl), {
-        parse_mode: 'Markdown',
-        reply_markup: payBtn.reply_markup,
-      });
+      // تعديل نفس الرسالة بدل فتح جديدة
+      try {
+        await ctx.editMessageCaption(T[lang].nowpay_link(plan, payUrl), {
+          parse_mode: 'Markdown',
+          reply_markup: payBtn.reply_markup,
+        });
+      } catch (_) {
+        try {
+          await ctx.editMessageText(T[lang].nowpay_link(plan, payUrl), {
+            parse_mode: 'Markdown',
+            reply_markup: payBtn.reply_markup,
+          });
+        } catch (__) {
+          await ctx.reply(T[lang].nowpay_link(plan, payUrl), {
+            parse_mode: 'Markdown',
+            reply_markup: payBtn.reply_markup,
+          });
+        }
+      }
 
     } catch (err) {
       console.error('NOWPayments error:', err.message);
-      try { await ctx.telegram.deleteMessage(ctx.chat.id, loadingMsg.message_id); } catch (_) {}
-      await ctx.reply(T[lang].nowpay_error, { parse_mode: 'Markdown' });
+      const errBtn = Markup.inlineKeyboard([[Markup.button.callback(lang === 'ar' ? '‹  رجوع' : '‹  Back', `show_pay_methods_${planKey}`)]]);
+      try {
+        await ctx.editMessageCaption(T[lang].nowpay_error, { parse_mode: 'Markdown', reply_markup: errBtn.reply_markup });
+      } catch (_) {
+        await ctx.reply(T[lang].nowpay_error, { parse_mode: 'Markdown', reply_markup: errBtn.reply_markup });
+      }
     }
   });
 });
@@ -1199,6 +1227,43 @@ async function handleNowPaymentsWebhook(body, signature) {
 }
 
 bot.nowPaymentsWebhook = handleNowPaymentsWebhook;
+
+// ─── Close Payment (يمسح الرسالة ويرجع لاختيار الخطط) ────────
+Object.keys(PLANS).forEach((planKey) => {
+  bot.action(`close_payment_${planKey}`, async (ctx) => {
+    await ctx.answerCbQuery();
+    const lang = getLang(ctx.from.id);
+    const cat = planKey.split('_')[0];
+    const catKbMap = { youtube: kb.youtube, netflix: kb.netflix, shahid: kb.shahid, gemini: kb.gemini, chatgpt: kb.chatgpt };
+    const catTextMap = {
+      youtube: (l) => T[l].youtube_info,
+      netflix: (l) => T[l].netflix_info,
+      shahid:  (l) => T[l].shahid_info,
+      gemini:  (l) => T[l].gemini_info,
+      chatgpt: (l) => T[l].chatgpt_info,
+    };
+    if (['youtube','netflix','shahid'].includes(cat)) {
+      try { await ctx.deleteMessage(); } catch (_) {}
+      await ctx.replyWithPhoto(PHOTO_IDS[cat], {
+        caption: catTextMap[cat](lang),
+        parse_mode: 'Markdown',
+        reply_markup: catKbMap[cat](lang).reply_markup,
+      });
+    } else {
+      try {
+        await ctx.editMessageText(catTextMap[cat](lang), {
+          parse_mode: 'Markdown',
+          reply_markup: catKbMap[cat](lang).reply_markup,
+        });
+      } catch (_) {
+        await ctx.reply(catTextMap[cat](lang), {
+          parse_mode: 'Markdown',
+          reply_markup: catKbMap[cat](lang).reply_markup,
+        });
+      }
+    }
+  });
+});
 
 // ─── FAQ ─────────────────────────────────────────────────────
 bot.action('nav_faq', async (ctx) => {
