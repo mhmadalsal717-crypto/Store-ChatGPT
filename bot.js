@@ -1135,11 +1135,11 @@ Object.keys(PLANS).forEach((planKey) => {
 ━━━━━━━━━━━━━━━━━━
 📦 *Your order:* ${plan.emoji} ${plan.service} · _${plan.period}_ · *$${plan.usd}*`;
 
-    const backKb = Markup.inlineKeyboard([[Markup.button.callback(lang === 'ar' ? '‹  رجوع' : '‹  Back', `show_pay_methods_${planKey}`)]]);
+    const closeKb = Markup.inlineKeyboard([[Markup.button.callback(lang === 'ar' ? '✖️  إغلاق' : '✖️  Close', `close_binance_${planKey}`)]]);
 
     // نحذف الصورة ونحط النص في رسالة جديدة نظيفة
     try { await ctx.deleteMessage(); } catch (_) {}
-    await ctx.reply(text, { parse_mode: 'Markdown', reply_markup: backKb.reply_markup });
+    await ctx.reply(text, { parse_mode: 'Markdown', reply_markup: closeKb.reply_markup });
   });
 });
 
@@ -1329,6 +1329,15 @@ bot.nowPaymentsWebhook = handleNowPaymentsWebhook;
 bot.action('del_invoice_msg', async (ctx) => {
   await ctx.answerCbQuery();
   try { await ctx.deleteMessage(); } catch (_) {}
+});
+
+// ─── Close Binance (يمسح ويرجع للرئيسية) ─────────────────────
+Object.keys(PLANS).forEach((planKey) => {
+  bot.action(`close_binance_${planKey}`, async (ctx) => {
+    await ctx.answerCbQuery();
+    try { await ctx.deleteMessage(); } catch (_) {}
+    await showMain(ctx, false);
+  });
 });
 
 // ─── Close Payment (يمسح الرسالة ويرجع لاختيار الخطط) ────────
