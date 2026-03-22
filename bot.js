@@ -990,16 +990,41 @@ Object.keys(PLANS).forEach((key) => {
     await ctx.answerCbQuery();
     const lang = getLang(ctx.from.id);
     const plan = PLANS[key];
+    const cat = key.split('_')[0];
+    const photoIds = {
+      youtube: 'https://i.postimg.cc/nLMhGL8V/f013c8552c71d1f31fbd5e8430d2457c.jpg',
+      netflix: 'https://i.postimg.cc/hjzhctpn/979161810ef2d1ab4d338e91fceb8b96.jpg',
+      shahid:  'https://i.postimg.cc/vHz8Rnb6/9bb7347e380da518e4ebe55d9b63ad2a.jpg',
+    };
+
+    // نجرب نعدل نفس الرسالة أولاً
     try {
       await ctx.editMessageCaption(T[lang].choose_payment(plan), {
         parse_mode: 'Markdown',
         reply_markup: kb.payMethod(lang, key).reply_markup,
       });
     } catch (_) {
-      await editOrReply(ctx, T[lang].choose_payment(plan), {
-        parse_mode: 'Markdown',
-        reply_markup: kb.payMethod(lang, key).reply_markup,
-      });
+      try {
+        await ctx.editMessageText(T[lang].choose_payment(plan), {
+          parse_mode: 'Markdown',
+          reply_markup: kb.payMethod(lang, key).reply_markup,
+        });
+      } catch (__) {
+        // الرسالة اتحذفت (جاي من Binance) - نرسل رسالة جديدة مع صورة لو موجودة
+        try { await ctx.deleteMessage(); } catch (_) {}
+        if (photoIds[cat]) {
+          await ctx.replyWithPhoto(photoIds[cat], {
+            caption: T[lang].choose_payment(plan),
+            parse_mode: 'Markdown',
+            reply_markup: kb.payMethod(lang, key).reply_markup,
+          });
+        } else {
+          await ctx.reply(T[lang].choose_payment(plan), {
+            parse_mode: 'Markdown',
+            reply_markup: kb.payMethod(lang, key).reply_markup,
+          });
+        }
+      }
     }
   });
 });
