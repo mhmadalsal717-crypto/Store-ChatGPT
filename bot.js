@@ -1096,6 +1096,47 @@ bot.on('text', async (ctx) => {
   }
   if (text.startsWith('/')) return;
 
+  // ─── Reply Keyboard handlers ───────────────────────────────
+  const replyMap = {
+    '🛒 Products': 'nav_products', '🛒 المنتجات': 'nav_products',
+    '📦 My Orders': 'nav_orders',  '📦 طلباتي': 'nav_orders',
+    '💬 Support': 'nav_support',   '💬 الدعم': 'nav_support',
+    '❓ FAQ': 'nav_faq',           '❓ أسئلة شائعة': 'nav_faq',
+    '💳 Payments': 'nav_payments', '💳 طرق الدفع': 'nav_payments',
+    '🌐 العربية': 'ar',            '🌐 English': 'en',
+    '👨‍💼 Admin Panel': 'admin',    '👨‍💼 الأدمن': 'admin',
+  };
+
+  if (replyMap[text] !== undefined) {
+    const action = replyMap[text];
+    if (action === 'ar' || action === 'en') {
+      userLang.set(userId, action);
+      return showMain(ctx, false);
+    }
+    if (action === 'admin') {
+      if (userId !== FOUNDER_ID) return;
+      return ctx.reply('👨‍💼 *Admin Panel*', { parse_mode: 'Markdown', reply_markup: Markup.inlineKeyboard([
+        [Markup.button.callback('📊  Store Statistics', 'adm_stats')],
+        [Markup.button.callback('👥  User Statistics',  'adm_users')],
+        [Markup.button.callback('📢  Broadcast',         'adm_broadcast')],
+      ]).reply_markup });
+    }
+    if (action === 'nav_products') {
+      return ctx.reply(T[lang].browse, { parse_mode: 'Markdown', reply_markup: kb.products(lang).reply_markup });
+    }
+    if (action === 'nav_orders') return showOrders(ctx, false);
+    if (action === 'nav_support') {
+      return ctx.reply(T[lang].support_text, { parse_mode: 'Markdown', reply_markup: kb.backMain(lang).reply_markup });
+    }
+    if (action === 'nav_faq') {
+      return ctx.reply(T[lang].faq_text, { parse_mode: 'Markdown', reply_markup: kb.backMain(lang).reply_markup });
+    }
+    if (action === 'nav_payments') {
+      return ctx.reply(T[lang].payments_text, { parse_mode: 'Markdown', reply_markup: kb.payments(lang).reply_markup });
+    }
+    return;
+  }
+
 
 
   if (userId === FOUNDER_ID && broadcastMode.get(FOUNDER_ID)) {
