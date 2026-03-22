@@ -122,6 +122,22 @@ _Select your plan:_`,
 ━━━━━━━━━━━━━━━━━━
 _Select your plan:_`,
 
+    gemini_info: `✨ *Gemini Pro*
+━━━━━━━━━━━━━━━━━━
+✦ *Advanced* AI by Google 🧠
+✦ *Smart* & creative conversations 💡
+✦ *Analyze* images & documents 📄
+✦ Available on *all* devices 📱
+━━━━━━━━━━━━━━━━━━
+_Select your plan:_`,
+    chatgpt_info: `🤖 *ChatGPT Plus*
+━━━━━━━━━━━━━━━━━━
+✦ *GPT-4* — OpenAI's most powerful model 🧠
+✦ *Faster* & more accurate responses ⚡
+✦ *Image generation* with DALL·E 🎨
+✦ *Priority access* to latest features 🌟
+━━━━━━━━━━━━━━━━━━
+_Select your plan:_`,
     plan_month:   () => `📅  1 Month`,
     plan_3months: () => `🗓️  3 Months`,
     plan_6months: () => `📆  6 Months`,
@@ -340,6 +356,22 @@ _اختر الباقة:_`,
 ━━━━━━━━━━━━━━━━━━
 _اختر الباقة:_`,
 
+    gemini_info: `✨ *Gemini Pro*
+━━━━━━━━━━━━━━━━━━
+✦ *ذكاء اصطناعي* متقدم من Google 🧠
+✦ *محادثات* ذكية وإبداعية 💡
+✦ *تحليل* الصور والمستندات 📄
+✦ متاح على *جميع* الأجهزة 📱
+━━━━━━━━━━━━━━━━━━
+_اختر الباقة:_`,
+    chatgpt_info: `🤖 *ChatGPT Plus*
+━━━━━━━━━━━━━━━━━━
+✦ *GPT-4* أقوى نموذج من OpenAI 🧠
+✦ *ردود أسرع* وأكثر دقة ⚡
+✦ *توليد* الصور بـ DALL·E 🎨
+✦ *وصول أولوي* لأحدث الميزات 🌟
+━━━━━━━━━━━━━━━━━━
+_اختر الباقة:_`,
     plan_month:   () => `📅  شهر واحد`,
     plan_3months: () => `🗓️  3 أشهر`,
     plan_6months: () => `📆  6 أشهر`,
@@ -523,29 +555,27 @@ const kb = {
     [Markup.button.callback(T[l].plan_3months(), 'sel_youtube_3months')],
     [Markup.button.callback(T[l].plan_6months(), 'sel_youtube_6months')],
     [Markup.button.callback(T[l].plan_year(),    'sel_youtube_year')],
-    [Markup.button.callback(T[l].back, 'nav_products')],
+    [Markup.button.callback(T[l].back, 'back_to_products')],
   ]),
   netflix:  (l) => Markup.inlineKeyboard([
     [Markup.button.callback(T[l].plan_month(),   'sel_netflix_month')],
     [Markup.button.callback(T[l].plan_3months(), 'sel_netflix_3months')],
     [Markup.button.callback(T[l].plan_6months(), 'sel_netflix_6months')],
     [Markup.button.callback(T[l].plan_year(),    'sel_netflix_year')],
-    [Markup.button.callback(T[l].back, 'nav_products')],
+    [Markup.button.callback(T[l].back, 'back_to_products')],
   ]),
   shahid:   (l) => Markup.inlineKeyboard([
     [Markup.button.callback(T[l].plan_month(),   'sel_shahid_month')],
     [Markup.button.callback(T[l].plan_3months(), 'sel_shahid_3months')],
     [Markup.button.callback(T[l].plan_6months(), 'sel_shahid_6months')],
     [Markup.button.callback(T[l].plan_year(),    'sel_shahid_year')],
-    [Markup.button.callback(T[l].back, 'nav_products')],
+    [Markup.button.callback(T[l].back, 'back_to_products')],
   ]),
   payMethod: (l, planKey) => Markup.inlineKeyboard([
-    [Markup.button.callback('⭐  Telegram Stars',  `pay_stars_${planKey}`)],
-    [Markup.button.callback('🟡  Binance Pay',     `pay_binance_${planKey}`)],
-    [Markup.button.callback('💠  USDT · TRC20',    `pay_trc20_${planKey}`)],
-    [Markup.button.callback('💠  USDT · BEP20',    `pay_bep20_${planKey}`)],
-    [Markup.button.callback('💠  USDT · ERC20',    `pay_erc20_${planKey}`)],
-    [Markup.button.callback(T[l].back, `back_to_cat_${planKey.split('_')[0]}`)],
+    [Markup.button.callback('⭐  Telegram Stars', `pay_stars_${planKey}`)],
+    [Markup.button.callback('🟡  Binance', `pay_binance_${planKey}`), Markup.button.callback('🔵  USDT TRC20', `pay_trc20_${planKey}`)],
+    [Markup.button.callback('🟡  USDT BEP20', `pay_bep20_${planKey}`), Markup.button.callback('🔷  USDT ERC20', `pay_erc20_${planKey}`)],
+    [Markup.button.callback(T[l].back, `back_plan_${planKey}`)],
   ]),
   backMain:     (l) => Markup.inlineKeyboard([[Markup.button.callback(T[l].back_menu, 'nav_main')]]),
   payments:     (l) => Markup.inlineKeyboard([
@@ -638,26 +668,9 @@ async function showMain(ctx, isEdit) {
   const userId = ctx.from.id;
   const lang = getLang(userId);
   const name = ctx.from?.first_name || (lang === 'ar' ? 'عزيزي' : 'there');
-
-  // Reply keyboard (bottom buttons)
-  const replyRows = [
-    [lang === 'ar' ? '🛒 المنتجات' : '🛒 Products',   lang === 'ar' ? '📦 طلباتي' : '📦 My Orders'],
-    [lang === 'ar' ? '💬 الدعم' : '💬 Support',        lang === 'ar' ? '❓ أسئلة شائعة' : '❓ FAQ'],
-    [lang === 'ar' ? '💳 طرق الدفع' : '💳 Payments',  lang === 'ar' ? '🌐 English' : '🌐 العربية'],
-  ];
-  if (userId === FOUNDER_ID) replyRows.push([lang === 'ar' ? '👨‍💼 لوحة الأدمن' : '👨‍💼 Admin Panel']);
-
-  const replyKeyboard = Markup.keyboard(replyRows).resize();
-
-  if (isEdit) {
-    try {
-      await ctx.editMessageText(T[lang].welcome(name), { parse_mode: 'Markdown', reply_markup: kb.main(lang, userId).reply_markup });
-    } catch (_) {
-      await ctx.reply(T[lang].welcome(name), { parse_mode: 'Markdown', reply_markup: replyKeyboard.reply_markup });
-    }
-  } else {
-    await ctx.reply(T[lang].welcome(name), { parse_mode: 'Markdown', reply_markup: replyKeyboard.reply_markup });
-  }
+  const extra = { parse_mode: 'Markdown', reply_markup: kb.main(lang, userId).reply_markup };
+  if (isEdit) await editOrReply(ctx, T[lang].welcome(name), extra);
+  else await ctx.reply(T[lang].welcome(name), extra);
 }
 bot.action('nav_main', async (ctx) => { await ctx.answerCbQuery(); await showMain(ctx, true); });
 
@@ -831,6 +844,50 @@ _اختر الباقة:_`
 _Select your plan:_`,
     { parse_mode: 'Markdown', reply_markup: kb.chatgpt(lang).reply_markup }
   );
+});
+
+// ─── Back: plan list → products ─────────────────────────────
+bot.action('back_to_products', async (ctx) => {
+  await ctx.answerCbQuery();
+  const lang = getLang(ctx.from.id);
+  try { await ctx.deleteMessage(); } catch (_) {}
+  await ctx.reply(T[lang].browse, { parse_mode: 'Markdown', reply_markup: kb.products(lang).reply_markup });
+});
+
+// ─── Back: payment method → plan list ────────────────────────
+Object.keys(PLANS).forEach((key) => {
+  bot.action(`back_plan_${key}`, async (ctx) => {
+    await ctx.answerCbQuery();
+    const lang = getLang(ctx.from.id);
+    const cat = key.split('_')[0];
+    const catKbMap = { youtube: kb.youtube, netflix: kb.netflix, shahid: kb.shahid, gemini: kb.gemini, chatgpt: kb.chatgpt };
+    const catTextMap = {
+      youtube: (l) => T[l].youtube_info,
+      netflix: (l) => T[l].netflix_info,
+      shahid:  (l) => T[l].shahid_info,
+      gemini:  (l) => T[l].gemini_info,
+      chatgpt: (l) => T[l].chatgpt_info,
+    };
+    if (['youtube','netflix','shahid'].includes(cat)) {
+      try {
+        await ctx.editMessageCaption(catTextMap[cat](lang), {
+          parse_mode: 'Markdown',
+          reply_markup: catKbMap[cat](lang).reply_markup,
+        });
+      } catch (_) {
+        await ctx.replyWithPhoto(PHOTO_IDS[cat], {
+          caption: catTextMap[cat](lang),
+          parse_mode: 'Markdown',
+          reply_markup: catKbMap[cat](lang).reply_markup,
+        });
+      }
+    } else {
+      await editOrReply(ctx, catTextMap[cat](lang), {
+        parse_mode: 'Markdown',
+        reply_markup: catKbMap[cat](lang).reply_markup,
+      });
+    }
+  });
 });
 
 // ─── Plan Selection → Payment Method ─────────────────────────
@@ -1013,44 +1070,7 @@ bot.on('text', async (ctx) => {
   }
   if (text.startsWith('/')) return;
 
-  // Handle Reply Keyboard buttons
-  const replyBtns = {
-    '🛒 Products': 'nav_products', '🛒 المنتجات': 'nav_products',
-    '📦 My Orders': 'nav_orders',  '📦 طلباتي': 'nav_orders',
-    '💬 Support': 'nav_support',   '💬 الدعم': 'nav_support',
-    '❓ FAQ': 'nav_faq',           '❓ أسئلة شائعة': 'nav_faq',
-    '💳 Payments': 'nav_payments', '💳 طرق الدفع': 'nav_payments',
-    '🌐 العربية': 'switch_to_ar',  '🌐 English': 'switch_to_en',
-    '👨‍💼 Admin Panel': 'nav_admin', '👨‍💼 لوحة الأدمن': 'nav_admin',
-  };
 
-  if (replyBtns[text]) {
-    const action = replyBtns[text];
-    if (action === 'switch_to_ar') { userLang.set(userId, 'ar'); return showMain(ctx, false); }
-    if (action === 'switch_to_en') { userLang.set(userId, 'en'); return showMain(ctx, false); }
-    if (action === 'nav_products') {
-      const browseText = lang === 'ar' ? T.ar.browse : T.en.browse;
-      return ctx.reply(browseText, { parse_mode: 'Markdown', reply_markup: kb.products(lang).reply_markup });
-    }
-    if (action === 'nav_orders')   { return showOrders(ctx, false); }
-    if (action === 'nav_support')  {
-      return ctx.reply(T[lang].support_text, { parse_mode: 'Markdown', reply_markup: kb.backMain(lang).reply_markup });
-    }
-    if (action === 'nav_faq')      {
-      return ctx.reply(T[lang].faq_text, { parse_mode: 'Markdown', reply_markup: kb.backMain(lang).reply_markup });
-    }
-    if (action === 'nav_payments') {
-      return ctx.reply(T[lang].payments_text, { parse_mode: 'Markdown', reply_markup: kb.payments(lang).reply_markup });
-    }
-    if (action === 'nav_admin' && userId === FOUNDER_ID) {
-      return ctx.reply('👨‍💼 *Admin Panel*', { parse_mode: 'Markdown', reply_markup: Markup.inlineKeyboard([
-        [Markup.button.callback('📊  Store Statistics', 'adm_stats')],
-        [Markup.button.callback('👥  User Statistics',  'adm_users')],
-        [Markup.button.callback('📢  Broadcast',         'adm_broadcast')],
-      ]).reply_markup });
-    }
-    return;
-  }
 
   if (userId === FOUNDER_ID && broadcastMode.get(FOUNDER_ID)) {
     broadcastMode.delete(FOUNDER_ID);
