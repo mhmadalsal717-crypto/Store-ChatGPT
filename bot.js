@@ -603,7 +603,7 @@ const kb = {
     [Markup.button.callback(l === 'ar' ? '⭐  Telegram Stars · ادفع الآن' : '⭐  Telegram Stars · Pay Now', `pay_stars_${planKey}`)],
     [Markup.button.callback(l === 'ar' ? '💠  عملات رقمية · Pay' : '💠  Crypto · Pay', `pay_nowpay_${planKey}`)],
     [Markup.button.callback('🟡  Binance Pay', `pay_binance_${planKey}`)],
-    [Markup.button.callback(l === 'ar' ? '✖️  إغلاق' : '✖️  Close', `close_payment_${planKey}`)],
+    [Markup.button.callback(l === 'ar' ? '‹  رجوع' : '‹  Back', `back_plan_${planKey}`)],
   ]),
   backMain:     (l) => Markup.inlineKeyboard([[Markup.button.callback(T[l].back_menu, 'nav_main')]]),
   payments:     (l) => Markup.inlineKeyboard([
@@ -1011,6 +1011,50 @@ Object.keys(PLANS).forEach((key) => {
     const plan = PLANS[key];
     try {
       await ctx.answerCbQuery();
+
+      // نص صفحة الدفع بالستارز
+      const starsText = lang === 'ar'
+        ? `⭐ *Telegram Stars · ادفع الآن*
+━━━━━━━━━━━━━━━━━━
+${plan.emoji} *${plan.service}* · _${plan.period_ar}_
+💰 *السعر:* ${plan.amount} ⭐
+━━━━━━━━━━━━━━━━━━
+_اضغط الزر أدناه للدفع مباشرة عبر تلغرام:_`
+        : `⭐ *Telegram Stars · Pay Now*
+━━━━━━━━━━━━━━━━━━
+${plan.emoji} *${plan.service}* · _${plan.period}_
+💰 *Price:* ${plan.amount} ⭐
+━━━━━━━━━━━━━━━━━━
+_Tap the button below to pay directly via Telegram:_`;
+
+      const starsKb = Markup.inlineKeyboard([
+        [Markup.button.callback(lang === 'ar' ? `⭐ ادفع ${plan.amount} Stars` : `⭐ Pay ${plan.amount} Stars`, `stars_confirm_${key}`)],
+        [Markup.button.callback(lang === 'ar' ? '‹  رجوع' : '‹  Back', `show_pay_methods_${key}`)],
+      ]);
+
+      // تعديل نفس الرسالة
+      try {
+        await ctx.editMessageCaption(starsText, { parse_mode: 'Markdown', reply_markup: starsKb.reply_markup });
+      } catch (_) {
+        try {
+          await ctx.editMessageText(starsText, { parse_mode: 'Markdown', reply_markup: starsKb.reply_markup });
+        } catch (__) {
+          await ctx.reply(starsText, { parse_mode: 'Markdown', reply_markup: starsKb.reply_markup });
+        }
+      }
+
+    } catch (err) {
+      console.error('Stars error:', err.message);
+      try { await ctx.answerCbQuery('❌ Error. Try again.', true); } catch (_) {}
+    }
+  });
+
+  // زر التأكيد - يبعث الفاتورة الفعلية
+  bot.action(`stars_confirm_${key}`, async (ctx) => {
+    const lang = getLang(ctx.from.id);
+    const plan = PLANS[key];
+    try {
+      await ctx.answerCbQuery();
       await ctx.replyWithInvoice({
         title: plan.title,
         description: plan.description,
@@ -1020,11 +1064,11 @@ Object.keys(PLANS).forEach((key) => {
         prices: [{ label: plan.title, amount: plan.amount }],
         reply_markup: Markup.inlineKeyboard([
           [Markup.button.pay(lang === 'ar' ? `⭐ ادفع ${plan.amount} Stars` : `⭐ Pay ${plan.amount} Stars`)],
-          [Markup.button.callback(lang === 'ar' ? '‹  رجوع' : '‹  Back', `show_pay_methods_${key}`)],
+          [Markup.button.callback(lang === 'ar' ? '✖️  إغلاق' : '✖️  Close', `del_invoice_msg`)],
         ]).reply_markup,
       });
     } catch (err) {
-      console.error('Stars error:', err.message);
+      console.error('Stars invoice error:', err.message);
       try { await ctx.answerCbQuery('❌ Error. Try again.', true); } catch (_) {}
     }
   });
@@ -1227,6 +1271,12 @@ async function handleNowPaymentsWebhook(body, signature) {
 }
 
 bot.nowPaymentsWebhook = handleNowPaymentsWebhook;
+
+// ─── Close Invoice (يمسح فاتورة Stars) ──────────────────────
+bot.action('del_invoice_msg', async (ctx) => {
+  await ctx.answerCbQuery();
+  try { await ctx.deleteMessage(); } catch (_) {}
+});
 
 // ─── Close Payment (يمسح الرسالة ويرجع لاختيار الخطط) ────────
 Object.keys(PLANS).forEach((planKey) => {
