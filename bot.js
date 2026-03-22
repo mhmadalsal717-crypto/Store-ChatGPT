@@ -25,6 +25,7 @@ const pendingEmail   = new Map();
 const pendingPayment = new Map(); // userId -> { planKey, plan }
 const userInfoCache  = new Map();
 const broadcastMode  = new Map();
+const supportMode    = new Map(); // userId -> conversation history (AI Support)
 
 const getLang = (id) => userLang.get(id) || 'en';
 
@@ -197,6 +198,40 @@ _Our team is always here for you._
 
 _Don't hesitate to reach out for any question or issue._
 ━━━━━━━━━━━━━━━━━━`,
+
+    ai_support_welcome:
+`🤖 *AI Support*
+━━━━━━━━━━━━━━━━━━
+_Hello! I'm your virtual assistant. How can I help you?_
+
+_Ask me anything about our products, payments, or orders._`,
+
+    ai_support_end: `✅ *Chat ended.*
+_Thank you for contacting us! Feel free to reach out anytime._ 👋`,
+    ai_support_escalate: `👨‍💼 _I'm connecting you with our support team now..._`,
+    ai_thinking: `🤔 _Thinking..._`,
+    ai_error: `❌ _Something went wrong. Please try again._`,
+    end_chat_btn: `✖️  End Chat`,
+
+    ai_support_welcome:
+`🤖 *AI Support*
+━━━━━━━━━━━━━━━━━━
+_Hello! I'm your smart assistant._
+_I can help you with:_
+
+• Products & prices
+• Payment methods
+• Order tracking
+• Any other questions
+
+_Just type your question! 👇_`,
+
+    ai_support_end: `✅ *Chat ended.*
+_Thank you for contacting us! Have a great day_ 👋`,
+    ai_support_escalate: `👨‍💼 *Connecting you to our support team...*
+_We'll get back to you as soon as possible._`,
+    ai_thinking: `🤖 _Thinking..._`,
+    ai_end_btn: `✖️  End Chat`,
 
     payments_text: `💳 *Payment Methods*\n\n_Choose your preferred payment method:_`,
 
@@ -445,6 +480,40 @@ _فريقنا دائماً هنا لمساعدتك._
 
 _لا تتردد في التواصل لأي استفسار أو مشكلة._
 ━━━━━━━━━━━━━━━━━━`,
+
+    ai_support_welcome:
+`🤖 *دعم AI*
+━━━━━━━━━━━━━━━━━━
+_مرحباً! أنا مساعدك الذكي. كيف أقدر أساعدك؟_
+
+_اسألني عن أي شيء — المنتجات، الدفع، أو طلباتك._`,
+
+    ai_support_end: `✅ *تم إنهاء المحادثة.*
+_شكراً لتواصلك معنا! لا تتردد في التواصل في أي وقت._ 👋`,
+    ai_support_escalate: `👨‍💼 _جارٍ تحويلك لفريق الدعم..._`,
+    ai_thinking: `🤔 _جارٍ التفكير..._`,
+    ai_error: `❌ _حدث خطأ. حاول مجدداً._`,
+    end_chat_btn: `✖️  إنهاء المحادثة`,
+
+    ai_support_welcome:
+`🤖 *دعم ذكي*
+━━━━━━━━━━━━━━━━━━
+_مرحباً! أنا مساعدك الذكي._
+_أقدر أساعدك في:_
+
+• المنتجات والأسعار
+• طرق الدفع
+• متابعة الطلبات
+• أي استفسار آخر
+
+_فقط اكتب سؤالك! 👇_`,
+
+    ai_support_end: `✅ *تم إنهاء المحادثة.*
+_شكراً لتواصلك معنا! أتمنى لك يوماً رائعاً_ 👋`,
+    ai_support_escalate: `👨‍💼 *جارٍ تحويلك لفريق الدعم...*
+_سنتواصل معك في أقرب وقت._`,
+    ai_thinking: `🤖 _جارٍ التفكير..._`,
+    ai_end_btn: `✖️  إنهاء المحادثة`,
 
     payments_text: `💳 *طرق الدفع*\n\n_اختر طريقة الدفع المناسبة:_`,
 
@@ -1387,10 +1456,81 @@ bot.action('nav_faq', async (ctx) => {
 });
 
 // ─── Support ─────────────────────────────────────────────────
+// ─── Gemini AI Support ───────────────────────────────────────
+const STORE_CONTEXT = `
+You are a helpful customer support assistant for SubsGate Store, a digital subscriptions store.
+You help customers in both Arabic and English - always respond in the same language the customer uses.
+
+PRODUCTS & PRICES:
+- YouTube Premium: 1 Month $5 | 3 Months $8 | 6 Months $12 | 1 Year $15
+- Netflix Premium: 1 Month $5 | 3 Months $8 | 6 Months $12 | 1 Year $15
+- Shahid Plus: 1 Month $5 | 3 Months $8 | 6 Months $12 | 1 Year $15
+- Gemini Pro: 1 Month $5 | 1 Year $15
+- ChatGPT Plus: 1 Month $5 | 1 Year $15
+
+PAYMENT METHODS:
+1. Telegram Stars - instant, directly through Telegram
+2. Crypto via NOWPayments - accepts 300+ cryptocurrencies (USDT, BTC, ETH, BNB, etc.)
+3. Binance Pay - send to Binance ID: 815791123, then screenshot to @XBLLT
+
+AFTER PAYMENT:
+- Enter your email for activation
+- Activation within minutes after review
+- Track orders with /orders command
+
+SUPPORT: @XBLLT available 24/7
+
+RULES:
+- Be friendly and helpful
+- Keep responses concise
+- If customer is very angry or insists on human support, say you will escalate and include the word "ESCALATE" in your response
+- Never make up information not listed above
+`;
+
+async function askGemini(history, userMessage) {
+  const { GoogleGenerativeAI } = require('@google/generative-ai');
+  const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+  const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
+
+  const chat = model.startChat({
+    history: history.map(h => ({
+      role: h.role,
+      parts: [{ text: h.text }],
+    })),
+    systemInstruction: STORE_CONTEXT,
+  });
+
+  const result = await chat.sendMessage(userMessage);
+  return result.response.text();
+}
+
 bot.action('nav_support', async (ctx) => {
   await ctx.answerCbQuery();
-  const lang = getLang(ctx.from.id);
-  await editOrReply(ctx, T[lang].support_text, { parse_mode: 'Markdown', reply_markup: kb.backMain(lang).reply_markup });
+  const userId = ctx.from.id;
+  const lang = getLang(userId);
+
+  // تفعيل وضع AI Support وتصفير المحادثة
+  supportMode.set(userId, []);
+
+  const endBtn = Markup.inlineKeyboard([
+    [Markup.button.callback(T[lang].end_chat_btn || (lang === 'ar' ? '✖️  إنهاء المحادثة' : '✖️  End Chat'), 'ai_support_end')],
+  ]);
+
+  await editOrReply(ctx, T[lang].ai_support_welcome, {
+    parse_mode: 'Markdown',
+    reply_markup: endBtn.reply_markup,
+  });
+});
+
+bot.action('ai_support_end', async (ctx) => {
+  await ctx.answerCbQuery();
+  const userId = ctx.from.id;
+  const lang = getLang(userId);
+  supportMode.delete(userId);
+  await editOrReply(ctx, T[lang].ai_support_end, {
+    parse_mode: 'Markdown',
+    reply_markup: kb.backMain(lang).reply_markup,
+  });
 });
 
 // ─── Payments Info ────────────────────────────────────────────
@@ -1562,6 +1702,60 @@ bot.on('text', async (ctx) => {
       }
       return ctx.reply(`✅ Done!\n✓ ${sent} sent\n✗ ${failed} failed`);
     } catch (_) { return ctx.reply('❌ Broadcast failed.'); }
+  }
+
+  // ─── AI Support Handler ───────────────────────────────────
+  if (supportMode.has(userId)) {
+    const lang = getLang(userId);
+    const history = supportMode.get(userId);
+    const endBtn = Markup.inlineKeyboard([
+      [Markup.button.callback(T[lang].end_chat_btn || (lang === 'ar' ? '✖️  إنهاء المحادثة' : '✖️  End Chat'), 'ai_support_end')],
+    ]);
+
+    // رسالة "جارٍ التفكير"
+    const thinkingMsg = await ctx.reply(T[lang].ai_thinking, { parse_mode: 'Markdown' });
+
+    try {
+      const aiReply = await askGemini(history, text);
+
+      // حذف رسالة التفكير
+      try { await ctx.telegram.deleteMessage(ctx.chat.id, thinkingMsg.message_id); } catch (_) {}
+
+      // تحديث المحادثة
+      history.push({ role: 'user', text });
+      history.push({ role: 'model', text: aiReply });
+      supportMode.set(userId, history);
+
+      // تحقق لو يحتاج تحويل للأدمن
+      if (aiReply.includes('ESCALATE')) {
+        const cleanReply = aiReply.replace('ESCALATE', '').trim();
+        await ctx.reply(cleanReply, { parse_mode: 'Markdown', reply_markup: endBtn.reply_markup });
+        supportMode.delete(userId);
+
+        // إشعار الأدمن
+        const username = ctx.from.username || ctx.from.first_name || 'Unknown';
+        const lastMessages = history.slice(-4).map(h => (h.role === 'user' ? '👤 ' : '🤖 ') + h.text).join('\n');
+        await bot.telegram.sendMessage(FOUNDER_ID,
+          `🆘 *Support Escalation*
+━━━━━━━━━━━━━━━━━━
+👤 @${username} (\`${userId}\`)
+
+*Last messages:*
+${lastMessages}`,
+          { parse_mode: 'Markdown' }
+        );
+      } else {
+        await ctx.reply(aiReply, { parse_mode: 'Markdown', reply_markup: endBtn.reply_markup });
+      }
+    } catch (err) {
+      console.error('Gemini error:', err.message);
+      try { await ctx.telegram.deleteMessage(ctx.chat.id, thinkingMsg.message_id); } catch (_) {}
+      await ctx.reply(
+        lang === 'ar' ? '❌ عذراً، حدث خطأ. حاول مجدداً.' : '❌ Sorry, an error occurred. Please try again.',
+        { parse_mode: 'Markdown', reply_markup: endBtn.reply_markup }
+      );
+    }
+    return;
   }
 
   if (pendingEmail.has(userId)) {
