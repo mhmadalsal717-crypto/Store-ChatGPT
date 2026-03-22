@@ -69,6 +69,20 @@ app.post('/webhook', express.raw({ type: 'application/json' }), async (req, res)
   }
 });
 
+// ─── NOWPayments Webhook ─────────────────────────────────────
+app.post('/nowpayments-webhook', express.json(), async (req, res) => {
+  try {
+    const signature = req.headers['x-nowpayments-sig'] || '';
+    const body = req.body;
+    console.log('💠 NOWPayments webhook received:', JSON.stringify(body));
+    await bot.nowPaymentsWebhook(body, signature);
+    res.status(200).json({ status: 'ok' });
+  } catch (err) {
+    console.error('NOWPayments webhook error:', err.message);
+    res.status(200).json({ status: 'ok' });
+  }
+});
+
 // Middleware to parse JSON (for other endpoints)
 app.use(express.json());
 
@@ -164,4 +178,3 @@ if (process.env.WEBHOOK_URL) {
   process.once('SIGINT', () => bot.stop('SIGINT'));
   process.once('SIGTERM', () => bot.stop('SIGTERM'));
 }
-
