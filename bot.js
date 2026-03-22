@@ -1044,23 +1044,35 @@ Object.keys(PLANS).forEach((planKey) => {
 const axios = require('axios');
 
 async function createNowPayment(plan, userId) {
-  const response = await axios.post(
-    'https://api.nowpayments.io/v1/payment',
-    {
-      price_amount: plan.usd,
-      price_currency: 'usd',
-      order_id: `${userId}_${Date.now()}`,
-      order_description: plan.title,
-      ipn_callback_url: `${process.env.WEBHOOK_URL}/nowpayments-webhook`,
-    },
-    {
-      headers: {
-        'x-api-key': process.env.NOWPAYMENTS_API_KEY,
-        'Content-Type': 'application/json',
-      },
-    }
-  );
-  return response.data;
+  const payload = {
+    price_amount: plan.usd,
+    price_currency: 'usd',
+    pay_currency: 'usdttrc20',
+    order_id: `order_${userId}_${Date.now()}`,
+    order_description: plan.title,
+    ipn_callback_url: `${process.env.WEBHOOK_URL}/nowpayments-webhook`,
+    is_fixed_rate: false,
+    is_fee_paid_by_user: false,
+  };
+  console.log('NOWPayments request:', JSON.stringify(payload));
+  console.log('API Key exists:', !!process.env.NOWPAYMENTS_API_KEY);
+  try {
+    const response = await axios.post(
+      'https://api.nowpayments.io/v1/payment',
+      payload,
+      {
+        headers: {
+          'x-api-key': process.env.NOWPAYMENTS_API_KEY,
+          'Content-Type': 'application/json',
+        },
+      }
+    );
+    console.log('NOWPayments response:', JSON.stringify(response.data));
+    return response.data;
+  } catch (err) {
+    console.error('NOWPayments full error:', err.response?.data || err.message);
+    throw err;
+  }
 }
 
 Object.keys(PLANS).forEach((planKey) => {
