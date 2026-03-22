@@ -30,12 +30,22 @@ const getLang = (id) => userLang.get(id) || 'en';
 
 // ─── Plans ────────────────────────────────────────────────────
 const PLANS = {
-  youtube_month: { title: 'YouTube Premium · 1 Month',  description: 'YouTube Premium for 1 month.',  amount: 300,  emoji: '▶️', service: 'YouTube Premium',  period: '1 Month',  period_ar: 'شهر واحد'  },
-  youtube_year:  { title: 'YouTube Premium · 1 Year',   description: 'YouTube Premium for 1 year.',   amount: 1000, emoji: '▶️', service: 'YouTube Premium',  period: '1 Year',   period_ar: 'سنة كاملة' },
-  netflix_month: { title: 'Netflix Premium · 1 Month',  description: 'Netflix Premium for 1 month.',  amount: 350,  emoji: '🎬', service: 'Netflix Premium',  period: '1 Month',  period_ar: 'شهر واحد'  },
-  netflix_year:  { title: 'Netflix Premium · 1 Year',   description: 'Netflix Premium for 1 year.',   amount: 1000, emoji: '🎬', service: 'Netflix Premium',  period: '1 Year',   period_ar: 'سنة كاملة' },
-  shahid_month:  { title: 'Shahid Plus · 1 Month',      description: 'Shahid Plus for 1 month.',      amount: 200,  emoji: '🎥', service: 'Shahid Plus',      period: '1 Month',  period_ar: 'شهر واحد'  },
-  shahid_year:   { title: 'Shahid Plus · 1 Year',       description: 'Shahid Plus for 1 year.',       amount: 600,  emoji: '🎥', service: 'Shahid Plus',      period: '1 Year',   period_ar: 'سنة كاملة' },
+  youtube_month:   { title: 'YouTube Premium · 1 Month',  description: 'YouTube Premium for 1 month.',  amount: 300,  emoji: '▶️', service: 'YouTube Premium',  period: '1 Month',  period_ar: 'شهر واحد'   },
+  youtube_3months: { title: 'YouTube Premium · 3 Months', description: 'YouTube Premium for 3 months.', amount: 750,  emoji: '▶️', service: 'YouTube Premium',  period: '3 Months', period_ar: '3 أشهر'      },
+  youtube_6months: { title: 'YouTube Premium · 6 Months', description: 'YouTube Premium for 6 months.', amount: 1300, emoji: '▶️', service: 'YouTube Premium',  period: '6 Months', period_ar: '6 أشهر'      },
+  youtube_year:    { title: 'YouTube Premium · 1 Year',   description: 'YouTube Premium for 1 year.',   amount: 2000, emoji: '▶️', service: 'YouTube Premium',  period: '1 Year',   period_ar: 'سنة كاملة'  },
+  netflix_month:   { title: 'Netflix Premium · 1 Month',  description: 'Netflix Premium for 1 month.',  amount: 350,  emoji: '🎬', service: 'Netflix Premium',  period: '1 Month',  period_ar: 'شهر واحد'   },
+  netflix_3months: { title: 'Netflix Premium · 3 Months', description: 'Netflix Premium for 3 months.', amount: 900,  emoji: '🎬', service: 'Netflix Premium',  period: '3 Months', period_ar: '3 أشهر'      },
+  netflix_6months: { title: 'Netflix Premium · 6 Months', description: 'Netflix Premium for 6 months.', amount: 1600, emoji: '🎬', service: 'Netflix Premium',  period: '6 Months', period_ar: '6 أشهر'      },
+  netflix_year:    { title: 'Netflix Premium · 1 Year',   description: 'Netflix Premium for 1 year.',   amount: 2800, emoji: '🎬', service: 'Netflix Premium',  period: '1 Year',   period_ar: 'سنة كاملة'  },
+  shahid_month:    { title: 'Shahid Plus · 1 Month',      description: 'Shahid Plus for 1 month.',      amount: 200,  emoji: '🎥', service: 'Shahid Plus',      period: '1 Month',  period_ar: 'شهر واحد'   },
+  shahid_3months:  { title: 'Shahid Plus · 3 Months',     description: 'Shahid Plus for 3 months.',     amount: 500,  emoji: '🎥', service: 'Shahid Plus',      period: '3 Months', period_ar: '3 أشهر'      },
+  shahid_6months:  { title: 'Shahid Plus · 6 Months',     description: 'Shahid Plus for 6 months.',     amount: 900,  emoji: '🎥', service: 'Shahid Plus',      period: '6 Months', period_ar: '6 أشهر'      },
+  shahid_year:     { title: 'Shahid Plus · 1 Year',       description: 'Shahid Plus for 1 year.',       amount: 1500, emoji: '🎥', service: 'Shahid Plus',      period: '1 Year',   period_ar: 'سنة كاملة'  },
+  gemini_month:    { title: 'Gemini Pro · 1 Month',       description: 'Gemini Pro for 1 month.',       amount: 400,  emoji: '✨', service: 'Gemini Pro',        period: '1 Month',  period_ar: 'شهر واحد'   },
+  gemini_year:     { title: 'Gemini Pro · 1 Year',        description: 'Gemini Pro for 1 year.',        amount: 3500, emoji: '✨', service: 'Gemini Pro',        period: '1 Year',   period_ar: 'سنة كاملة'  },
+  chatgpt_month:   { title: 'ChatGPT Plus · 1 Month',     description: 'ChatGPT Plus for 1 month.',     amount: 450,  emoji: '🤖', service: 'ChatGPT Plus',      period: '1 Month',  period_ar: 'شهر واحد'   },
+  chatgpt_year:    { title: 'ChatGPT Plus · 1 Year',      description: 'ChatGPT Plus for 1 year.',      amount: 4000, emoji: '🤖', service: 'ChatGPT Plus',      period: '1 Year',   period_ar: 'سنة كاملة'  },
 };
 
 // ─── Translations ─────────────────────────────────────────────
@@ -67,7 +77,9 @@ _The best Arabic series, films & live sports_
 🔒 *Secure payments* via Telegram Stars & Crypto
 💬 *24/7 support* always at your service
 
-_Choose an option below to get started_ 👇`,
+_Choose an option below to get started_ 👇
+
+📢 *Stay updated:* [SubsGate Channel](https://t.me/SubsGate)`,
 
     products:     `🛒  Products`,
     my_orders:    `📦  My Orders`,
@@ -83,35 +95,37 @@ _Choose an option below to get started_ 👇`,
     youtube_info:
 `▶️ *YouTube Premium*
 ━━━━━━━━━━━━━━━━━━
-✦ _Ad-free videos & music_
-✦ _Background playback_
-✦ _YouTube Originals & exclusives_
-✦ _Works on all your devices_
+✦ *Ad-free* videos & music 🎵
+✦ *Background* playback 📱
+✦ *YouTube Originals* & exclusives 🎬
+✦ Works on *all* your devices 💻
 ━━━━━━━━━━━━━━━━━━
 _Select your plan:_`,
 
     netflix_info:
 `🎬 *Netflix Premium*
 ━━━━━━━━━━━━━━━━━━
-✦ _4K Ultra HD quality_
-✦ _Up to 4 screens simultaneously_
-✦ _Thousands of movies & series_
-✦ _Download for offline viewing_
+✦ *4K Ultra HD* quality 🎥
+✦ *Shared account* access 👥
+✦ *Thousands* of movies & series 🍿
+✦ *Download* for offline viewing 📥
 ━━━━━━━━━━━━━━━━━━
 _Select your plan:_`,
 
     shahid_info:
 `🎥 *Shahid Plus*
 ━━━━━━━━━━━━━━━━━━
-✦ _Exclusive Arabic series & films_
-✦ _Live sports & major events_
-✦ _Available on all devices_
-✦ _HD & Full HD quality_
+✦ *Exclusive* Arabic series & films 🎭
+✦ *Live* sports & major events ⚽
+✦ Available on *all* devices 📱
+✦ *HD & Full HD* quality 🌟
 ━━━━━━━━━━━━━━━━━━
 _Select your plan:_`,
 
-    plan_month: (p) => `📅  1 Month  ·  ${p} ⭐`,
-    plan_year:  (p) => `📆  1 Year   ·  ${p} ⭐`,
+    plan_month:   () => `📅  1 Month`,
+    plan_3months: () => `🗓️  3 Months`,
+    plan_6months: () => `📆  6 Months`,
+    plan_year:    () => `🗃️  1 Year`,
 
     choose_payment: (plan) =>
 `💳 *Select Payment Method*
@@ -281,7 +295,9 @@ _أفضل المسلسلات العربية والأفلام والرياضة ا
 🔒 *دفع آمن* عبر Telegram Stars والعملات الرقمية
 💬 *دعم 24/7* في خدمتك دائماً
 
-_اختر من القائمة أدناه للبدء_ 👇`,
+_اختر من القائمة أدناه للبدء_ 👇
+
+📢 *آخر التحديثات:* [قناة SubsGate](https://t.me/SubsGate)`,
 
     products:     `🛒  المنتجات`,
     my_orders:    `📦  طلباتي`,
@@ -297,35 +313,37 @@ _اختر من القائمة أدناه للبدء_ 👇`,
     youtube_info:
 `▶️ *يوتيوب بريميوم*
 ━━━━━━━━━━━━━━━━━━
-✦ _مقاطع وموسيقى بدون إعلانات_
-✦ _تشغيل في الخلفية_
-✦ _محتوى حصري YouTube Originals_
-✦ _يعمل على جميع أجهزتك_
+✦ *بدون إعلانات* للمقاطع والموسيقى 🎵
+✦ *تشغيل في الخلفية* 📱
+✦ *محتوى حصري* YouTube Originals 🎬
+✦ يعمل على *جميع* أجهزتك 💻
 ━━━━━━━━━━━━━━━━━━
 _اختر الباقة:_`,
 
     netflix_info:
 `🎬 *نتفليكس بريميوم*
 ━━━━━━━━━━━━━━━━━━
-✦ _جودة 4K Ultra HD_
-✦ _حتى 4 شاشات في آن واحد_
-✦ _آلاف الأفلام والمسلسلات_
-✦ _تحميل للمشاهدة بدون إنترنت_
+✦ *جودة 4K Ultra HD* 🎥
+✦ *حساب مشترك* 👥
+✦ *آلاف* الأفلام والمسلسلات 🍿
+✦ *تحميل* للمشاهدة بدون إنترنت 📥
 ━━━━━━━━━━━━━━━━━━
 _اختر الباقة:_`,
 
     shahid_info:
 `🎥 *شاهد بلس*
 ━━━━━━━━━━━━━━━━━━
-✦ _مسلسلات وأفلام عربية حصرية_
-✦ _رياضة مباشرة وفعاليات كبرى_
-✦ _متاح على جميع الأجهزة_
-✦ _جودة HD و Full HD_
+✦ مسلسلات وأفلام عربية *حصرية* 🎭
+✦ *رياضة مباشرة* وفعاليات كبرى ⚽
+✦ متاح على *جميع* الأجهزة 📱
+✦ جودة *HD و Full HD* 🌟
 ━━━━━━━━━━━━━━━━━━
 _اختر الباقة:_`,
 
-    plan_month: (p) => `📅  شهر واحد  ·  ${p} ⭐`,
-    plan_year:  (p) => `📆  سنة كاملة  ·  ${p} ⭐`,
+    plan_month:   () => `📅  شهر واحد`,
+    plan_3months: () => `🗓️  3 أشهر`,
+    plan_6months: () => `📆  6 أشهر`,
+    plan_year:    () => `🗃️  سنة كاملة`,
 
     choose_payment: (plan) =>
 `💳 *اختر طريقة الدفع*
@@ -486,21 +504,39 @@ const kb = {
     [Markup.button.callback('▶️  YouTube Premium', 'cat_youtube')],
     [Markup.button.callback('🎬  Netflix Premium',  'cat_netflix')],
     [Markup.button.callback('🎥  Shahid Plus',       'cat_shahid')],
+    [Markup.button.callback('✨  Gemini Pro',         'cat_gemini')],
+    [Markup.button.callback('🤖  ChatGPT Plus',       'cat_chatgpt')],
     [Markup.button.callback(T[l].back, 'nav_main')],
   ]),
+  gemini:   (l) => Markup.inlineKeyboard([
+    [Markup.button.callback(T[l].plan_month(), 'sel_gemini_month')],
+    [Markup.button.callback(T[l].plan_year(),  'sel_gemini_year')],
+    [Markup.button.callback(T[l].back, 'nav_products')],
+  ]),
+  chatgpt:  (l) => Markup.inlineKeyboard([
+    [Markup.button.callback(T[l].plan_month(), 'sel_chatgpt_month')],
+    [Markup.button.callback(T[l].plan_year(),  'sel_chatgpt_year')],
+    [Markup.button.callback(T[l].back, 'nav_products')],
+  ]),
   youtube:  (l) => Markup.inlineKeyboard([
-    [Markup.button.callback(T[l].plan_month(300),  'sel_youtube_month')],
-    [Markup.button.callback(T[l].plan_year(1000),  'sel_youtube_year')],
+    [Markup.button.callback(T[l].plan_month(),   'sel_youtube_month')],
+    [Markup.button.callback(T[l].plan_3months(), 'sel_youtube_3months')],
+    [Markup.button.callback(T[l].plan_6months(), 'sel_youtube_6months')],
+    [Markup.button.callback(T[l].plan_year(),    'sel_youtube_year')],
     [Markup.button.callback(T[l].back, 'nav_products')],
   ]),
   netflix:  (l) => Markup.inlineKeyboard([
-    [Markup.button.callback(T[l].plan_month(350),  'sel_netflix_month')],
-    [Markup.button.callback(T[l].plan_year(1000),  'sel_netflix_year')],
+    [Markup.button.callback(T[l].plan_month(),   'sel_netflix_month')],
+    [Markup.button.callback(T[l].plan_3months(), 'sel_netflix_3months')],
+    [Markup.button.callback(T[l].plan_6months(), 'sel_netflix_6months')],
+    [Markup.button.callback(T[l].plan_year(),    'sel_netflix_year')],
     [Markup.button.callback(T[l].back, 'nav_products')],
   ]),
   shahid:   (l) => Markup.inlineKeyboard([
-    [Markup.button.callback(T[l].plan_month(200),  'sel_shahid_month')],
-    [Markup.button.callback(T[l].plan_year(600),   'sel_shahid_year')],
+    [Markup.button.callback(T[l].plan_month(),   'sel_shahid_month')],
+    [Markup.button.callback(T[l].plan_3months(), 'sel_shahid_3months')],
+    [Markup.button.callback(T[l].plan_6months(), 'sel_shahid_6months')],
+    [Markup.button.callback(T[l].plan_year(),    'sel_shahid_year')],
     [Markup.button.callback(T[l].back, 'nav_products')],
   ]),
   payMethod: (l, planKey) => Markup.inlineKeyboard([
@@ -509,7 +545,7 @@ const kb = {
     [Markup.button.callback('💠  USDT · TRC20',    `pay_trc20_${planKey}`)],
     [Markup.button.callback('💠  USDT · BEP20',    `pay_bep20_${planKey}`)],
     [Markup.button.callback('💠  USDT · ERC20',    `pay_erc20_${planKey}`)],
-    [Markup.button.callback(T[l].back, `cat_${planKey.split('_')[0]}`)],
+    [Markup.button.callback(T[l].back, `back_to_cat_${planKey.split('_')[0]}`)],
   ]),
   backMain:     (l) => Markup.inlineKeyboard([[Markup.button.callback(T[l].back_menu, 'nav_main')]]),
   payments:     (l) => Markup.inlineKeyboard([
@@ -602,9 +638,26 @@ async function showMain(ctx, isEdit) {
   const userId = ctx.from.id;
   const lang = getLang(userId);
   const name = ctx.from?.first_name || (lang === 'ar' ? 'عزيزي' : 'there');
-  const extra = { parse_mode: 'Markdown', reply_markup: kb.main(lang, userId).reply_markup };
-  if (isEdit) await editOrReply(ctx, T[lang].welcome(name), extra);
-  else await ctx.reply(T[lang].welcome(name), extra);
+
+  // Reply keyboard (bottom buttons)
+  const replyRows = [
+    [lang === 'ar' ? '🛒 المنتجات' : '🛒 Products',   lang === 'ar' ? '📦 طلباتي' : '📦 My Orders'],
+    [lang === 'ar' ? '💬 الدعم' : '💬 Support',        lang === 'ar' ? '❓ أسئلة شائعة' : '❓ FAQ'],
+    [lang === 'ar' ? '💳 طرق الدفع' : '💳 Payments',  lang === 'ar' ? '🌐 English' : '🌐 العربية'],
+  ];
+  if (userId === FOUNDER_ID) replyRows.push([lang === 'ar' ? '👨‍💼 لوحة الأدمن' : '👨‍💼 Admin Panel']);
+
+  const replyKeyboard = Markup.keyboard(replyRows).resize();
+
+  if (isEdit) {
+    try {
+      await ctx.editMessageText(T[lang].welcome(name), { parse_mode: 'Markdown', reply_markup: kb.main(lang, userId).reply_markup });
+    } catch (_) {
+      await ctx.reply(T[lang].welcome(name), { parse_mode: 'Markdown', reply_markup: replyKeyboard.reply_markup });
+    }
+  } else {
+    await ctx.reply(T[lang].welcome(name), { parse_mode: 'Markdown', reply_markup: replyKeyboard.reply_markup });
+  }
 }
 bot.action('nav_main', async (ctx) => { await ctx.answerCbQuery(); await showMain(ctx, true); });
 
@@ -646,6 +699,138 @@ bot.action('cat_shahid', async (ctx) => {
     parse_mode: 'Markdown',
     reply_markup: kb.shahid(lang).reply_markup,
   });
+});
+
+bot.action('cat_gemini', async (ctx) => {
+  await ctx.answerCbQuery();
+  const lang = getLang(ctx.from.id);
+  await editOrReply(ctx,
+    lang === 'ar'
+      ? `✨ *Gemini Pro*
+━━━━━━━━━━━━━━━━━━
+✦ *ذكاء اصطناعي* متقدم من Google 🧠
+✦ *محادثات* ذكية وإبداعية 💡
+✦ *تحليل* الصور والمستندات 📄
+✦ متاح على *جميع* الأجهزة 📱
+━━━━━━━━━━━━━━━━━━
+_اختر الباقة:_`
+      : `✨ *Gemini Pro*
+━━━━━━━━━━━━━━━━━━
+✦ *Advanced* AI by Google 🧠
+✦ *Smart* & creative conversations 💡
+✦ *Analyze* images & documents 📄
+✦ Available on *all* devices 📱
+━━━━━━━━━━━━━━━━━━
+_Select your plan:_`,
+    { parse_mode: 'Markdown', reply_markup: kb.gemini(lang).reply_markup }
+  );
+});
+
+bot.action('cat_chatgpt', async (ctx) => {
+  await ctx.answerCbQuery();
+  const lang = getLang(ctx.from.id);
+  await editOrReply(ctx,
+    lang === 'ar'
+      ? `🤖 *ChatGPT Plus*
+━━━━━━━━━━━━━━━━━━
+✦ *GPT-4* أقوى نموذج من OpenAI 🧠
+✦ *ردود أسرع* وأكثر دقة ⚡
+✦ *توليد* الصور بـ DALL·E 🎨
+✦ *وصول أولوي* لأحدث الميزات 🌟
+━━━━━━━━━━━━━━━━━━
+_اختر الباقة:_`
+      : `🤖 *ChatGPT Plus*
+━━━━━━━━━━━━━━━━━━
+✦ *GPT-4* — OpenAI's most powerful model 🧠
+✦ *Faster* & more accurate responses ⚡
+✦ *Image generation* with DALL·E 🎨
+✦ *Priority access* to latest features 🌟
+━━━━━━━━━━━━━━━━━━
+_Select your plan:_`,
+    { parse_mode: 'Markdown', reply_markup: kb.chatgpt(lang).reply_markup }
+  );
+});
+
+// ─── Back to category (for photo pages) ──────────────────────
+const PHOTO_IDS = {
+  youtube: 'AgACAgEAAxkBAAFFYSZpvxhcfwvMfkT1uO3pFCI38PfqEQAC3AtrGxjM-UU6VQmt4eB16gEAAwIAA3gAAzoE',
+  netflix: 'AgACAgEAAxkBAAFFYSdpvxhcsW4VFjuRG6X57dGUpSYydwAC3QtrGxjM-UW-Mhm3bMcksQEAAwIAA3gAAzoE',
+  shahid:  'AgACAgEAAxkBAAFFYSVpvxhcvfPUnOxgOnDf8rF_qsUwkgAC2wtrGxjM-UVDOdz_nBvY-AEAAwIAA3gAAzoE',
+};
+
+const CAT_CAPTIONS = {
+  youtube: (lang, T) => T[lang].youtube_info,
+  netflix: (lang, T) => T[lang].netflix_info,
+  shahid:  (lang, T) => T[lang].shahid_info,
+};
+
+['youtube', 'netflix', 'shahid'].forEach((cat) => {
+  bot.action(`back_to_cat_${cat}`, async (ctx) => {
+    await ctx.answerCbQuery();
+    const lang = getLang(ctx.from.id);
+    try {
+      await ctx.editMessageCaption(CAT_CAPTIONS[cat](lang, T), {
+        parse_mode: 'Markdown',
+        reply_markup: kb[cat](lang).reply_markup,
+      });
+    } catch (_) {
+      await ctx.replyWithPhoto(PHOTO_IDS[cat], {
+        caption: CAT_CAPTIONS[cat](lang, T),
+        parse_mode: 'Markdown',
+        reply_markup: kb[cat](lang).reply_markup,
+      });
+    }
+  });
+});
+
+bot.action('back_to_cat_gemini', async (ctx) => {
+  await ctx.answerCbQuery();
+  const lang = getLang(ctx.from.id);
+  await editOrReply(ctx,
+    lang === 'ar'
+      ? `✨ *Gemini Pro*
+━━━━━━━━━━━━━━━━━━
+✦ *ذكاء اصطناعي* متقدم من Google 🧠
+✦ *محادثات* ذكية وإبداعية 💡
+✦ *تحليل* الصور والمستندات 📄
+✦ متاح على *جميع* الأجهزة 📱
+━━━━━━━━━━━━━━━━━━
+_اختر الباقة:_`
+      : `✨ *Gemini Pro*
+━━━━━━━━━━━━━━━━━━
+✦ *Advanced* AI by Google 🧠
+✦ *Smart* & creative conversations 💡
+✦ *Analyze* images & documents 📄
+✦ Available on *all* devices 📱
+━━━━━━━━━━━━━━━━━━
+_Select your plan:_`,
+    { parse_mode: 'Markdown', reply_markup: kb.gemini(lang).reply_markup }
+  );
+});
+
+bot.action('back_to_cat_chatgpt', async (ctx) => {
+  await ctx.answerCbQuery();
+  const lang = getLang(ctx.from.id);
+  await editOrReply(ctx,
+    lang === 'ar'
+      ? `🤖 *ChatGPT Plus*
+━━━━━━━━━━━━━━━━━━
+✦ *GPT-4* أقوى نموذج من OpenAI 🧠
+✦ *ردود أسرع* وأكثر دقة ⚡
+✦ *توليد* الصور بـ DALL·E 🎨
+✦ *وصول أولوي* لأحدث الميزات 🌟
+━━━━━━━━━━━━━━━━━━
+_اختر الباقة:_`
+      : `🤖 *ChatGPT Plus*
+━━━━━━━━━━━━━━━━━━
+✦ *GPT-4* — OpenAI's most powerful model 🧠
+✦ *Faster* & more accurate responses ⚡
+✦ *Image generation* with DALL·E 🎨
+✦ *Priority access* to latest features 🌟
+━━━━━━━━━━━━━━━━━━
+_Select your plan:_`,
+    { parse_mode: 'Markdown', reply_markup: kb.chatgpt(lang).reply_markup }
+  );
 });
 
 // ─── Plan Selection → Payment Method ─────────────────────────
@@ -827,6 +1012,45 @@ bot.on('text', async (ctx) => {
     return ctx.reply('❌ Cancelled.', { reply_markup: kb.backMain(lang).reply_markup });
   }
   if (text.startsWith('/')) return;
+
+  // Handle Reply Keyboard buttons
+  const replyBtns = {
+    '🛒 Products': 'nav_products', '🛒 المنتجات': 'nav_products',
+    '📦 My Orders': 'nav_orders',  '📦 طلباتي': 'nav_orders',
+    '💬 Support': 'nav_support',   '💬 الدعم': 'nav_support',
+    '❓ FAQ': 'nav_faq',           '❓ أسئلة شائعة': 'nav_faq',
+    '💳 Payments': 'nav_payments', '💳 طرق الدفع': 'nav_payments',
+    '🌐 العربية': 'switch_to_ar',  '🌐 English': 'switch_to_en',
+    '👨‍💼 Admin Panel': 'nav_admin', '👨‍💼 لوحة الأدمن': 'nav_admin',
+  };
+
+  if (replyBtns[text]) {
+    const action = replyBtns[text];
+    if (action === 'switch_to_ar') { userLang.set(userId, 'ar'); return showMain(ctx, false); }
+    if (action === 'switch_to_en') { userLang.set(userId, 'en'); return showMain(ctx, false); }
+    if (action === 'nav_products') {
+      const browseText = lang === 'ar' ? T.ar.browse : T.en.browse;
+      return ctx.reply(browseText, { parse_mode: 'Markdown', reply_markup: kb.products(lang).reply_markup });
+    }
+    if (action === 'nav_orders')   { return showOrders(ctx, false); }
+    if (action === 'nav_support')  {
+      return ctx.reply(T[lang].support_text, { parse_mode: 'Markdown', reply_markup: kb.backMain(lang).reply_markup });
+    }
+    if (action === 'nav_faq')      {
+      return ctx.reply(T[lang].faq_text, { parse_mode: 'Markdown', reply_markup: kb.backMain(lang).reply_markup });
+    }
+    if (action === 'nav_payments') {
+      return ctx.reply(T[lang].payments_text, { parse_mode: 'Markdown', reply_markup: kb.payments(lang).reply_markup });
+    }
+    if (action === 'nav_admin' && userId === FOUNDER_ID) {
+      return ctx.reply('👨‍💼 *Admin Panel*', { parse_mode: 'Markdown', reply_markup: Markup.inlineKeyboard([
+        [Markup.button.callback('📊  Store Statistics', 'adm_stats')],
+        [Markup.button.callback('👥  User Statistics',  'adm_users')],
+        [Markup.button.callback('📢  Broadcast',         'adm_broadcast')],
+      ]).reply_markup });
+    }
+    return;
+  }
 
   if (userId === FOUNDER_ID && broadcastMode.get(FOUNDER_ID)) {
     broadcastMode.delete(FOUNDER_ID);
