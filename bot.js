@@ -1204,6 +1204,8 @@ Object.keys(PLANS).forEach((planKey) => {
         payment_currency: 'USD',
         payment_method: 'nowpayments',
         nowpayment_id: invoiceId,
+        plan_key: planKey,
+        plan_name: plan.title,
         email: null,
       });
 
@@ -1462,8 +1464,24 @@ bot.on('successful_payment', async (ctx) => {
   try {
     userInfoCache.set(userId, { first_name: ctx.from.first_name || '', username });
     const amount = payment.currency === 'XTR' ? payment.total_amount : payment.total_amount / 100;
+
+    // استخراج plan_key من الـ payload (شكله: youtube_month_123456_timestamp)
+    const payloadParts = (payment.invoice_payload || '').split('_');
+    const planKey = payloadParts.length >= 2 ? `${payloadParts[0]}_${payloadParts[1]}` : null;
+    const plan = planKey && PLANS[planKey] ? PLANS[planKey] : null;
+
     const { data, error } = await supabase.from('subscriptions')
-      .insert({ user_id: userId, username, status: 'pending', payment_amount: amount, payment_currency: payment.currency, email: null })
+      .insert({
+        user_id: userId,
+        username,
+        status: 'pending',
+        payment_amount: amount,
+        payment_currency: payment.currency,
+        payment_method: 'stars',
+        plan_key: planKey,
+        plan_name: plan ? plan.title : null,
+        email: null,
+      })
       .select().single();
     if (error) return ctx.reply(`❌ Error. Contact ${PAYMENT_INFO.support}`);
     pendingEmail.set(userId, data.id);
