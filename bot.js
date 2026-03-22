@@ -1488,22 +1488,26 @@ RULES:
 `;
 
 async function askGemini(history, userMessage) {
-  const { GoogleGenerativeAI } = require('@google/generative-ai');
-  const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-  const model = genAI.getGenerativeModel({
-    model: 'gemini-2.0-flash',
-    systemInstruction: STORE_CONTEXT,
-  });
-
-  const chat = model.startChat({
-    history: history.map(h => ({
-      role: h.role,
-      parts: [{ text: h.text }],
-    })),
-  });
-
-  const result = await chat.sendMessage(userMessage);
-  return result.response.text();
+  const response = await axios.post(
+    'https://api.groq.com/openai/v1/chat/completions',
+    {
+      model: 'llama-3.3-70b-versatile',
+      messages: [
+        { role: 'system', content: STORE_CONTEXT },
+        ...history.map(h => ({ role: h.role === 'model' ? 'assistant' : 'user', content: h.text })),
+        { role: 'user', content: userMessage },
+      ],
+      max_tokens: 1024,
+      temperature: 0.7,
+    },
+    {
+      headers: {
+        'Authorization': `Bearer ${process.env.GROQ_API_KEY}`,
+        'Content-Type': 'application/json',
+      },
+    }
+  );
+  return response.data.choices[0].message.content;
 }
 
 bot.action('nav_support', async (ctx) => {
