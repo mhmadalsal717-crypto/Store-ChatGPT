@@ -1080,13 +1080,41 @@ Object.keys(PLANS).forEach((planKey) => {
     await ctx.answerCbQuery();
     const lang = getLang(ctx.from.id);
     const plan = PLANS[planKey];
-    const header = lang === 'ar'
-      ? `\n\n📦 *طلبك:* ${plan.emoji} ${plan.service} · _${plan.period_ar}_ · *${plan.amount} ⭐* | *$${plan.usd}*\n━━━━━━━━━━━━━━━━━━\n`
-      : `\n\n📦 *Your order:* ${plan.emoji} ${plan.service} · _${plan.period}_ · *${plan.amount} ⭐* | *$${plan.usd}*\n━━━━━━━━━━━━━━━━━━\n`;
-    const text = T[lang].binance_text + header;
-    const backKb = Markup.inlineKeyboard([[Markup.button.callback(T[lang].back, `show_pay_methods_${planKey}`)]]);
-    try { await ctx.editMessageText(text, { parse_mode: 'Markdown', reply_markup: backKb.reply_markup }); }
-    catch (_) { await ctx.reply(text, { parse_mode: 'Markdown', reply_markup: backKb.reply_markup }); }
+    const text = lang === 'ar'
+      ? `🟡 *Binance Pay*
+━━━━━━━━━━━━━━━━━━
+*Binance ID:*
+\`${PAYMENT_INFO.binance_id}\`
+
+*الخطوات:*
+➊ افتح Binance ← Pay ← Send
+➋ أدخل ID: \`${PAYMENT_INFO.binance_id}\`
+➌ أدخل المبلغ: *$${plan.usd}*
+➍ أكمل الدفع
+➎ خذ سكرين شوت
+➏ أرسله لـ ${PAYMENT_INFO.support} مع _إيميلك والباقة_
+━━━━━━━━━━━━━━━━━━
+📦 *طلبك:* ${plan.emoji} ${plan.service} · _${plan.period_ar}_ · *$${plan.usd}*`
+      : `🟡 *Binance Pay*
+━━━━━━━━━━━━━━━━━━
+*Binance ID:*
+\`${PAYMENT_INFO.binance_id}\`
+
+*How to pay:*
+➊ Open Binance → Pay → Send
+➋ Enter ID: \`${PAYMENT_INFO.binance_id}\`
+➌ Enter amount: *$${plan.usd}*
+➍ Complete the payment
+➎ Screenshot the receipt
+➏ Send to ${PAYMENT_INFO.support} with your _email & plan_
+━━━━━━━━━━━━━━━━━━
+📦 *Your order:* ${plan.emoji} ${plan.service} · _${plan.period}_ · *$${plan.usd}*`;
+
+    const backKb = Markup.inlineKeyboard([[Markup.button.callback(lang === 'ar' ? '‹  رجوع' : '‹  Back', `show_pay_methods_${planKey}`)]]);
+
+    // نحذف الصورة ونحط النص في رسالة جديدة نظيفة
+    try { await ctx.deleteMessage(); } catch (_) {}
+    await ctx.reply(text, { parse_mode: 'Markdown', reply_markup: backKb.reply_markup });
   });
 });
 
