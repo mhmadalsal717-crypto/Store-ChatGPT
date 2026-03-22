@@ -633,7 +633,12 @@ bot.command('lang', async (ctx) => {
 // ─── Restart ──────────────────────────────────────────────────
 bot.action('restart_bot', async (ctx) => {
   await ctx.answerCbQuery();
-  await showMain(ctx, true);
+  await showMain(ctx, false);
+});
+
+// Reply Keyboard — Restart text handler
+bot.hears(['🔄 Restart', '🔄 إعادة التشغيل'], async (ctx) => {
+  await showMain(ctx, false);
 });
 
 // ─── Anti-spam ────────────────────────────────────────────────
@@ -668,7 +673,7 @@ async function showMain(ctx, isEdit) {
   const replyKb = Markup.keyboard([
     [lang === 'ar' ? '🛒 المنتجات' : '🛒 Products',   lang === 'ar' ? '📦 طلباتي' : '📦 My Orders'],
     [lang === 'ar' ? '💬 الدعم' : '💬 Support',        lang === 'ar' ? '❓ أسئلة شائعة' : '❓ FAQ'],
-    [lang === 'ar' ? '💳 طرق الدفع' : '💳 Payments',   lang === 'ar' ? '🌐 English' : '🌐 العربية'],
+    [lang === 'ar' ? '🔄 إعادة التشغيل' : '🔄 Restart', lang === 'ar' ? '🌐 English' : '🌐 العربية'],
     ...(isAdmin ? [[lang === 'ar' ? '👨‍💼 الأدمن' : '👨‍💼 Admin Panel']] : []),
   ]).resize();
 
@@ -1139,7 +1144,7 @@ bot.on('text', async (ctx) => {
     '📦 My Orders': 'nav_orders',  '📦 طلباتي': 'nav_orders',
     '💬 Support': 'nav_support',   '💬 الدعم': 'nav_support',
     '❓ FAQ': 'nav_faq',           '❓ أسئلة شائعة': 'nav_faq',
-    '💳 Payments': 'nav_payments', '💳 طرق الدفع': 'nav_payments',
+    '🔄 Restart': 'restart',   '🔄 إعادة التشغيل': 'restart',
     '🌐 العربية': 'ar',            '🌐 English': 'en',
     '👨‍💼 Admin Panel': 'admin',    '👨‍💼 الأدمن': 'admin',
   };
@@ -1168,8 +1173,8 @@ bot.on('text', async (ctx) => {
     if (action === 'nav_faq') {
       return ctx.reply(T[lang].faq_text, { parse_mode: 'Markdown', reply_markup: kb.backMain(lang).reply_markup });
     }
-    if (action === 'nav_payments') {
-      return ctx.reply(T[lang].payments_text, { parse_mode: 'Markdown', reply_markup: kb.payments(lang).reply_markup });
+    if (action === 'restart') {
+      return showMain(ctx, false);
     }
     return;
   }
