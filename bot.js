@@ -560,6 +560,7 @@ const kb = {
     [Markup.button.callback(T[l].back, 'back_to_products')],
   ]),
   payMethod: (l, planKey) => Markup.inlineKeyboard([
+    [Markup.button.callback('⭐  Telegram Stars', `pay_stars_${planKey}`)],
     [Markup.button.callback('🟡  Binance Pay', `pay_binance_${planKey}`), Markup.button.callback('🔵  USDT TRC20', `pay_trc20_${planKey}`)],
     [Markup.button.callback('🟡  USDT BEP20', `pay_bep20_${planKey}`), Markup.button.callback('🔷  USDT ERC20', `pay_erc20_${planKey}`)],
     [Markup.button.callback(T[l].back, `back_plan_${planKey}`)],
@@ -661,9 +662,27 @@ async function showMain(ctx, isEdit) {
   const userId = ctx.from.id;
   const lang = getLang(userId);
   const name = ctx.from?.first_name || (lang === 'ar' ? 'عزيزي' : 'there');
-  const extra = { parse_mode: 'Markdown', reply_markup: kb.main(lang, userId).reply_markup };
-  if (isEdit) await editOrReply(ctx, T[lang].welcome(name), extra);
-  else await ctx.reply(T[lang].welcome(name), extra);
+  const isAdmin = userId === FOUNDER_ID;
+
+  // Reply Keyboard shown below screen
+  const replyKb = Markup.keyboard([
+    [lang === 'ar' ? '🛒 المنتجات' : '🛒 Products',   lang === 'ar' ? '📦 طلباتي' : '📦 My Orders'],
+    [lang === 'ar' ? '💬 الدعم' : '💬 Support',        lang === 'ar' ? '❓ أسئلة شائعة' : '❓ FAQ'],
+    [lang === 'ar' ? '💳 طرق الدفع' : '💳 Payments',   lang === 'ar' ? '🌐 English' : '🌐 العربية'],
+    ...(isAdmin ? [[lang === 'ar' ? '👨‍💼 الأدمن' : '👨‍💼 Admin Panel']] : []),
+  ]).resize();
+
+  if (isEdit) {
+    // When editing (nav_main), keep reply keyboard + edit message without inline buttons
+    try {
+      await ctx.editMessageText(T[lang].welcome(name), { parse_mode: 'Markdown' });
+    } catch (_) {}
+  } else {
+    await ctx.reply(T[lang].welcome(name), {
+      parse_mode: 'Markdown',
+      reply_markup: replyKb.reply_markup,
+    });
+  }
 }
 bot.action('nav_main', async (ctx) => { await ctx.answerCbQuery(); await showMain(ctx, true); });
 
@@ -940,7 +959,25 @@ Object.keys(PLANS).forEach((key) => {
   });
 });
 
-// ─── Pay with Stars (handled via sel_ action directly) ──────
+// ─── Pay with Stars ───────────────────────────────────────────
+Object.keys(PLANS).forEach((key) => {
+  bot.action(`pay_stars_${key}`, async (ctx) => {
+    const plan = PLANS[key];
+    try {
+      await ctx.answerCbQuery();
+      await ctx.replyWithInvoice({
+        title: plan.title,
+        description: plan.description,
+        payload: `${key}_${ctx.from.id}_${Date.now()}`,
+        provider_token: '',
+        currency: 'XTR',
+        prices: [{ label: plan.title, amount: plan.amount }],
+      });
+    } catch (err) {
+      try { await ctx.answerCbQuery('❌ Error. Try again.', true); } catch (_) {}
+    }
+  });
+});
 
 // ─── Pay with Binance / USDT (manual) ────────────────────────
 const manualPayInfo = (lang, method, planKey) => {
