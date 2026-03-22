@@ -1490,14 +1490,16 @@ RULES:
 async function askGemini(history, userMessage) {
   const { GoogleGenerativeAI } = require('@google/generative-ai');
   const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-  const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
+  const model = genAI.getGenerativeModel({
+    model: 'gemini-1.5-flash',
+    systemInstruction: STORE_CONTEXT,
+  });
 
   const chat = model.startChat({
     history: history.map(h => ({
       role: h.role,
       parts: [{ text: h.text }],
     })),
-    systemInstruction: STORE_CONTEXT,
   });
 
   const result = await chat.sendMessage(userMessage);
