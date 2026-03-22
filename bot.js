@@ -1674,7 +1674,11 @@ bot.on('text', async (ctx) => {
     }
     if (action === 'nav_orders') return showOrders(ctx, false);
     if (action === 'nav_support') {
-      return ctx.reply(T[lang].support_text, { parse_mode: 'Markdown', reply_markup: kb.backMain(lang).reply_markup });
+      supportMode.set(userId, []);
+      const endBtn = Markup.inlineKeyboard([
+        [Markup.button.callback(lang === 'ar' ? '✖️  إنهاء المحادثة' : '✖️  End Chat', 'ai_support_end')],
+      ]);
+      return ctx.reply(T[lang].ai_support_welcome, { parse_mode: 'Markdown', reply_markup: endBtn.reply_markup });
     }
     if (action === 'nav_faq') {
       return ctx.reply(T[lang].faq_text, { parse_mode: 'Markdown', reply_markup: kb.backMain(lang).reply_markup });
