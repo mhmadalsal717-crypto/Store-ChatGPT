@@ -524,10 +524,10 @@ const kb = {
   verify:   (l) => Markup.inlineKeyboard([[Markup.button.callback(T[l].verify_btn, 'verify_human')]]),
   main:     (l, userId) => {
     const rows = [
-      [Markup.button.callback(T[l].products,     'nav_products')],
-      [Markup.button.callback(T[l].my_orders,    'nav_orders'),  Markup.button.callback(T[l].faq, 'nav_faq')],
-      [Markup.button.callback(T[l].support_btn,  'nav_support'), Markup.button.callback(T[l].payments_btn, 'nav_payments')],
-      [Markup.button.callback(T[l].switch_lang,  'switch_lang')],
+      [Markup.button.callback(T[l].products,    'nav_products')],
+      [Markup.button.callback(T[l].my_orders,   'nav_orders'),  Markup.button.callback(T[l].faq, 'nav_faq')],
+      [Markup.button.callback(T[l].support_btn, 'nav_support'), Markup.button.callback(T[l].switch_lang, 'switch_lang')],
+      [Markup.button.callback(l === 'ar' ? '🔄  بدء من جديد' : '🔄  Restart', 'restart_bot')],
     ];
     if (userId === FOUNDER_ID) rows.push([Markup.button.callback('👨‍💼  Admin Panel', 'nav_admin')]);
     return Markup.inlineKeyboard(rows);
@@ -572,7 +572,7 @@ const kb = {
     [Markup.button.callback(T[l].back, 'back_to_products')],
   ]),
   payMethod: (l, planKey) => Markup.inlineKeyboard([
-    [Markup.button.callback('⭐  Telegram Stars', `pay_stars_${planKey}`)],
+    [Markup.button.callback('⭐  Telegram Stars  ·  Pay Now', `pay_stars_${planKey}`)],
     [Markup.button.callback('🟡  Binance', `pay_binance_${planKey}`), Markup.button.callback('🔵  USDT TRC20', `pay_trc20_${planKey}`)],
     [Markup.button.callback('🟡  USDT BEP20', `pay_bep20_${planKey}`), Markup.button.callback('🔷  USDT ERC20', `pay_erc20_${planKey}`)],
     [Markup.button.callback(T[l].back, `back_plan_${planKey}`)],
@@ -640,6 +640,12 @@ bot.command('lang', async (ctx) => {
       [Markup.button.callback('🇬🇧 English', 'set_lang_en'), Markup.button.callback('🇸🇦 العربية', 'set_lang_ar')],
     ]).reply_markup }
   );
+});
+
+// ─── Restart ──────────────────────────────────────────────────
+bot.action('restart_bot', async (ctx) => {
+  await ctx.answerCbQuery();
+  await showMain(ctx, true);
 });
 
 // ─── Anti-spam ────────────────────────────────────────────────
@@ -950,13 +956,27 @@ const manualPayInfo = (lang, method, planKey) => {
     bot.action(`pay_${method}_${planKey}`, async (ctx) => {
       await ctx.answerCbQuery();
       const lang = getLang(ctx.from.id);
-      const catKey = `cat_${planKey.split('_')[0]}`;
-      await editOrReply(ctx, manualPayInfo(lang, method, planKey), {
-        parse_mode: 'Markdown',
-        reply_markup: Markup.inlineKeyboard([
-          [Markup.button.callback(T[lang].back, `sel_${planKey}`)],
-        ]).reply_markup,
-      });
+      const backKb = Markup.inlineKeyboard([
+        [Markup.button.callback(T[lang].back, `back_plan_${planKey}`)],
+      ]);
+      try {
+        await ctx.editMessageCaption(manualPayInfo(lang, method, planKey), {
+          parse_mode: 'Markdown',
+          reply_markup: backKb.reply_markup,
+        });
+      } catch (_) {
+        try {
+          await ctx.editMessageText(manualPayInfo(lang, method, planKey), {
+            parse_mode: 'Markdown',
+            reply_markup: backKb.reply_markup,
+          });
+        } catch (_2) {
+          await ctx.reply(manualPayInfo(lang, method, planKey), {
+            parse_mode: 'Markdown',
+            reply_markup: backKb.reply_markup,
+          });
+        }
+      }
     });
   });
 });
