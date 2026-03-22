@@ -30,22 +30,22 @@ const getLang = (id) => userLang.get(id) || 'en';
 
 // ─── Plans ────────────────────────────────────────────────────
 const PLANS = {
-  youtube_month:   { title: 'YouTube Premium · 1 Month',  description: 'YouTube Premium for 1 month.',  amount: 300,  emoji: '▶️', service: 'YouTube Premium',  period: '1 Month',  period_ar: 'شهر واحد'   },
-  youtube_3months: { title: 'YouTube Premium · 3 Months', description: 'YouTube Premium for 3 months.', amount: 750,  emoji: '▶️', service: 'YouTube Premium',  period: '3 Months', period_ar: '3 أشهر'      },
-  youtube_6months: { title: 'YouTube Premium · 6 Months', description: 'YouTube Premium for 6 months.', amount: 1300, emoji: '▶️', service: 'YouTube Premium',  period: '6 Months', period_ar: '6 أشهر'      },
-  youtube_year:    { title: 'YouTube Premium · 1 Year',   description: 'YouTube Premium for 1 year.',   amount: 2000, emoji: '▶️', service: 'YouTube Premium',  period: '1 Year',   period_ar: 'سنة كاملة'  },
-  netflix_month:   { title: 'Netflix Premium · 1 Month',  description: 'Netflix Premium for 1 month.',  amount: 350,  emoji: '🎬', service: 'Netflix Premium',  period: '1 Month',  period_ar: 'شهر واحد'   },
-  netflix_3months: { title: 'Netflix Premium · 3 Months', description: 'Netflix Premium for 3 months.', amount: 900,  emoji: '🎬', service: 'Netflix Premium',  period: '3 Months', period_ar: '3 أشهر'      },
-  netflix_6months: { title: 'Netflix Premium · 6 Months', description: 'Netflix Premium for 6 months.', amount: 1600, emoji: '🎬', service: 'Netflix Premium',  period: '6 Months', period_ar: '6 أشهر'      },
-  netflix_year:    { title: 'Netflix Premium · 1 Year',   description: 'Netflix Premium for 1 year.',   amount: 2800, emoji: '🎬', service: 'Netflix Premium',  period: '1 Year',   period_ar: 'سنة كاملة'  },
-  shahid_month:    { title: 'Shahid Plus · 1 Month',      description: 'Shahid Plus for 1 month.',      amount: 200,  emoji: '🎥', service: 'Shahid Plus',      period: '1 Month',  period_ar: 'شهر واحد'   },
-  shahid_3months:  { title: 'Shahid Plus · 3 Months',     description: 'Shahid Plus for 3 months.',     amount: 500,  emoji: '🎥', service: 'Shahid Plus',      period: '3 Months', period_ar: '3 أشهر'      },
-  shahid_6months:  { title: 'Shahid Plus · 6 Months',     description: 'Shahid Plus for 6 months.',     amount: 900,  emoji: '🎥', service: 'Shahid Plus',      period: '6 Months', period_ar: '6 أشهر'      },
-  shahid_year:     { title: 'Shahid Plus · 1 Year',       description: 'Shahid Plus for 1 year.',       amount: 1500, emoji: '🎥', service: 'Shahid Plus',      period: '1 Year',   period_ar: 'سنة كاملة'  },
-  gemini_month:    { title: 'Gemini Pro · 1 Month',       description: 'Gemini Pro for 1 month.',       amount: 400,  emoji: '✨', service: 'Gemini Pro',        period: '1 Month',  period_ar: 'شهر واحد'   },
-  gemini_year:     { title: 'Gemini Pro · 1 Year',        description: 'Gemini Pro for 1 year.',        amount: 3500, emoji: '✨', service: 'Gemini Pro',        period: '1 Year',   period_ar: 'سنة كاملة'  },
-  chatgpt_month:   { title: 'ChatGPT Plus · 1 Month',     description: 'ChatGPT Plus for 1 month.',     amount: 450,  emoji: '🤖', service: 'ChatGPT Plus',      period: '1 Month',  period_ar: 'شهر واحد'   },
-  chatgpt_year:    { title: 'ChatGPT Plus · 1 Year',      description: 'ChatGPT Plus for 1 year.',      amount: 4000, emoji: '🤖', service: 'ChatGPT Plus',      period: '1 Year',   period_ar: 'سنة كاملة'  },
+  youtube_month:   { title: 'YouTube Premium · 1 Month',  description: 'YouTube Premium for 1 month.',  amount: 300,  usd: 5,  emoji: '▶️', service: 'YouTube Premium',  period: '1 Month',  period_ar: 'شهر واحد'  },
+  youtube_3months: { title: 'YouTube Premium · 3 Months', description: 'YouTube Premium for 3 months.', amount: 750,  usd: 8,  emoji: '▶️', service: 'YouTube Premium',  period: '3 Months', period_ar: '3 أشهر'     },
+  youtube_6months: { title: 'YouTube Premium · 6 Months', description: 'YouTube Premium for 6 months.', amount: 1300, usd: 12, emoji: '▶️', service: 'YouTube Premium',  period: '6 Months', period_ar: '6 أشهر'     },
+  youtube_year:    { title: 'YouTube Premium · 1 Year',   description: 'YouTube Premium for 1 year.',   amount: 2000, usd: 15, emoji: '▶️', service: 'YouTube Premium',  period: '1 Year',   period_ar: 'سنة كاملة' },
+  netflix_month:   { title: 'Netflix Premium · 1 Month',  description: 'Netflix Premium for 1 month.',  amount: 350,  usd: 5,  emoji: '🎬', service: 'Netflix Premium',  period: '1 Month',  period_ar: 'شهر واحد'  },
+  netflix_3months: { title: 'Netflix Premium · 3 Months', description: 'Netflix Premium for 3 months.', amount: 900,  usd: 8,  emoji: '🎬', service: 'Netflix Premium',  period: '3 Months', period_ar: '3 أشهر'     },
+  netflix_6months: { title: 'Netflix Premium · 6 Months', description: 'Netflix Premium for 6 months.', amount: 1600, usd: 12, emoji: '🎬', service: 'Netflix Premium',  period: '6 Months', period_ar: '6 أشهر'     },
+  netflix_year:    { title: 'Netflix Premium · 1 Year',   description: 'Netflix Premium for 1 year.',   amount: 2800, usd: 15, emoji: '🎬', service: 'Netflix Premium',  period: '1 Year',   period_ar: 'سنة كاملة' },
+  shahid_month:    { title: 'Shahid Plus · 1 Month',      description: 'Shahid Plus for 1 month.',      amount: 200,  usd: 5,  emoji: '🎥', service: 'Shahid Plus',      period: '1 Month',  period_ar: 'شهر واحد'  },
+  shahid_3months:  { title: 'Shahid Plus · 3 Months',     description: 'Shahid Plus for 3 months.',     amount: 500,  usd: 8,  emoji: '🎥', service: 'Shahid Plus',      period: '3 Months', period_ar: '3 أشهر'     },
+  shahid_6months:  { title: 'Shahid Plus · 6 Months',     description: 'Shahid Plus for 6 months.',     amount: 900,  usd: 12, emoji: '🎥', service: 'Shahid Plus',      period: '6 Months', period_ar: '6 أشهر'     },
+  shahid_year:     { title: 'Shahid Plus · 1 Year',       description: 'Shahid Plus for 1 year.',       amount: 1500, usd: 15, emoji: '🎥', service: 'Shahid Plus',      period: '1 Year',   period_ar: 'سنة كاملة' },
+  gemini_month:    { title: 'Gemini Pro · 1 Month',       description: 'Gemini Pro for 1 month.',       amount: 400,  usd: 5,  emoji: '✨', service: 'Gemini Pro',        period: '1 Month',  period_ar: 'شهر واحد'  },
+  gemini_year:     { title: 'Gemini Pro · 1 Year',        description: 'Gemini Pro for 1 year.',        amount: 3500, usd: 15, emoji: '✨', service: 'Gemini Pro',        period: '1 Year',   period_ar: 'سنة كاملة' },
+  chatgpt_month:   { title: 'ChatGPT Plus · 1 Month',     description: 'ChatGPT Plus for 1 month.',     amount: 450,  usd: 5,  emoji: '🤖', service: 'ChatGPT Plus',      period: '1 Month',  period_ar: 'شهر واحد'  },
+  chatgpt_year:    { title: 'ChatGPT Plus · 1 Year',      description: 'ChatGPT Plus for 1 year.',      amount: 4000, usd: 15, emoji: '🤖', service: 'ChatGPT Plus',      period: '1 Year',   period_ar: 'سنة كاملة' },
 };
 
 // ─── Translations ─────────────────────────────────────────────
@@ -141,9 +141,29 @@ _Select your plan:_`,
 `💳 *Select Payment Method*
 ━━━━━━━━━━━━━━━━━━
 ${plan.emoji} *${plan.service}* ·  _${plan.period}_
-💰 *Price:* ${plan.amount} ⭐
+💰 *Price:* ${plan.amount} ⭐  |  $${plan.usd} USD
 ━━━━━━━━━━━━━━━━━━
 _Choose how you'd like to pay:_`,
+
+    nowpay_text: (plan) =>
+`💠 *Crypto Payment · NOWPayments*
+━━━━━━━━━━━━━━━━━━
+${plan.emoji} *${plan.service}* · _${plan.period}_
+💰 *Amount:* $${plan.usd} USD
+━━━━━━━━━━━━━━━━━━
+_Generating your payment link..._`,
+
+    nowpay_link: (plan, url) =>
+`💠 *Crypto Payment · NOWPayments*
+━━━━━━━━━━━━━━━━━━
+${plan.emoji} *${plan.service}* · _${plan.period}_
+💰 *Amount:* $${plan.usd} USD
+━━━━━━━━━━━━━━━━━━
+✅ *Your payment link is ready!*
+👇 Click the button below to pay`,
+
+    nowpay_error: `❌ *Failed to generate payment link.*
+_Please try again or choose another payment method._`,
 
     faq_text:
 `❓ *Frequently Asked Questions*
@@ -369,9 +389,29 @@ _اختر الباقة:_`,
 `💳 *اختر طريقة الدفع*
 ━━━━━━━━━━━━━━━━━━
 ${plan.emoji} *${plan.service}* ·  _${plan.period_ar}_
-💰 *السعر:* ${plan.amount} ⭐
+💰 *السعر:* ${plan.amount} ⭐  |  $${plan.usd}
 ━━━━━━━━━━━━━━━━━━
 _اختر طريقة الدفع المناسبة:_`,
+
+    nowpay_text: (plan) =>
+`💠 *دفع بالعملات الرقمية · NOWPayments*
+━━━━━━━━━━━━━━━━━━
+${plan.emoji} *${plan.service}* · _${plan.period_ar}_
+💰 *المبلغ:* $${plan.usd}
+━━━━━━━━━━━━━━━━━━
+_جارٍ إنشاء رابط الدفع..._`,
+
+    nowpay_link: (plan, url) =>
+`💠 *دفع بالعملات الرقمية · NOWPayments*
+━━━━━━━━━━━━━━━━━━
+${plan.emoji} *${plan.service}* · _${plan.period_ar}_
+💰 *المبلغ:* $${plan.usd}
+━━━━━━━━━━━━━━━━━━
+✅ *رابط الدفع جاهز!*
+👇 اضغط الزر أدناه للدفع`,
+
+    nowpay_error: `❌ *فشل إنشاء رابط الدفع.*
+_حاول مجدداً أو اختر طريقة دفع أخرى._`,
 
     faq_text:
 `❓ *الأسئلة الشائعة*
@@ -561,8 +601,8 @@ const kb = {
   ]),
   payMethod: (l, planKey) => Markup.inlineKeyboard([
     [Markup.button.callback(l === 'ar' ? '⭐  Telegram Stars · ادفع الآن' : '⭐  Telegram Stars · Pay Now', `pay_stars_${planKey}`)],
-    [Markup.button.callback('🟡  Binance Pay', `pay_binance_${planKey}`), Markup.button.callback('🔵  USDT TRC20', `pay_trc20_${planKey}`)],
-    [Markup.button.callback('🟡  USDT BEP20', `pay_bep20_${planKey}`), Markup.button.callback('🔷  USDT ERC20', `pay_erc20_${planKey}`)],
+    [Markup.button.callback(l === 'ar' ? '💠  عملات رقمية · Crypto' : '💠  Crypto · NOWPayments', `pay_nowpay_${planKey}`)],
+    [Markup.button.callback('🟡  Binance Pay', `pay_binance_${planKey}`)],
     [Markup.button.callback(T[l].back, `back_plan_${planKey}`)],
   ]),
   backMain:     (l) => Markup.inlineKeyboard([[Markup.button.callback(T[l].back_menu, 'nav_main')]]),
@@ -984,50 +1024,159 @@ Object.keys(PLANS).forEach((key) => {
   });
 });
 
-// ─── Pay with Binance / USDT (manual) ────────────────────────
-const manualPayInfo = (lang, method, planKey) => {
-  const plan = PLANS[planKey];
-  const texts = {
-    binance: T[lang].binance_text,
-    trc20:   T[lang].trc20_text,
-    bep20:   T[lang].bep20_text,
-    erc20:   T[lang].erc20_text,
-  };
-  const header = lang === 'ar'
-    ? `\n\n📦 *طلبك:* ${plan.emoji} ${plan.service} · _${plan.period_ar}_ · *${plan.amount} ⭐*\n━━━━━━━━━━━━━━━━━━\n`
-    : `\n\n📦 *Your order:* ${plan.emoji} ${plan.service} · _${plan.period}_ · *${plan.amount} ⭐*\n━━━━━━━━━━━━━━━━━━\n`;
-  return texts[method] + header;
-};
-
-['binance', 'trc20', 'bep20', 'erc20'].forEach((method) => {
-  Object.keys(PLANS).forEach((planKey) => {
-    bot.action(`pay_${method}_${planKey}`, async (ctx) => {
-      await ctx.answerCbQuery();
-      const lang = getLang(ctx.from.id);
-      const backKb = Markup.inlineKeyboard([
-        [Markup.button.callback(T[lang].back, `show_pay_methods_${planKey}`)],
-      ]);
-      try {
-        await ctx.editMessageCaption(manualPayInfo(lang, method, planKey), {
-          parse_mode: 'Markdown',
-          reply_markup: backKb.reply_markup,
-        });
-      } catch (_) {
-        try {
-          await ctx.editMessageText(manualPayInfo(lang, method, planKey), {
-            parse_mode: 'Markdown',
-            reply_markup: backKb.reply_markup,
-          });
-        } catch (_2) {
-          await ctx.reply(manualPayInfo(lang, method, planKey), {
-            parse_mode: 'Markdown',
-            reply_markup: backKb.reply_markup,
-          });
-        }
-      }
-    });
+// ─── Pay with Binance (manual) ───────────────────────────────
+Object.keys(PLANS).forEach((planKey) => {
+  bot.action(`pay_binance_${planKey}`, async (ctx) => {
+    await ctx.answerCbQuery();
+    const lang = getLang(ctx.from.id);
+    const plan = PLANS[planKey];
+    const header = lang === 'ar'
+      ? `\n\n📦 *طلبك:* ${plan.emoji} ${plan.service} · _${plan.period_ar}_ · *${plan.amount} ⭐* | *$${plan.usd}*\n━━━━━━━━━━━━━━━━━━\n`
+      : `\n\n📦 *Your order:* ${plan.emoji} ${plan.service} · _${plan.period}_ · *${plan.amount} ⭐* | *$${plan.usd}*\n━━━━━━━━━━━━━━━━━━\n`;
+    const text = T[lang].binance_text + header;
+    const backKb = Markup.inlineKeyboard([[Markup.button.callback(T[lang].back, `show_pay_methods_${planKey}`)]]);
+    try { await ctx.editMessageText(text, { parse_mode: 'Markdown', reply_markup: backKb.reply_markup }); }
+    catch (_) { await ctx.reply(text, { parse_mode: 'Markdown', reply_markup: backKb.reply_markup }); }
   });
 });
+
+// ─── Pay with NOWPayments (Crypto) ───────────────────────────
+const axios = require('axios');
+
+async function createNowPayment(plan, userId) {
+  const response = await axios.post(
+    'https://api.nowpayments.io/v1/payment',
+    {
+      price_amount: plan.usd,
+      price_currency: 'usd',
+      order_id: `${userId}_${Date.now()}`,
+      order_description: plan.title,
+      ipn_callback_url: `${process.env.WEBHOOK_URL}/nowpayments-webhook`,
+    },
+    {
+      headers: {
+        'x-api-key': process.env.NOWPAYMENTS_API_KEY,
+        'Content-Type': 'application/json',
+      },
+    }
+  );
+  return response.data;
+}
+
+Object.keys(PLANS).forEach((planKey) => {
+  bot.action(`pay_nowpay_${planKey}`, async (ctx) => {
+    await ctx.answerCbQuery();
+    const lang = getLang(ctx.from.id);
+    const plan = PLANS[planKey];
+    const userId = ctx.from.id;
+    const username = ctx.from.username || ctx.from.first_name || 'Unknown';
+
+    const loadingMsg = await ctx.reply(T[lang].nowpay_text(plan), { parse_mode: 'Markdown' });
+
+    try {
+      const payment = await createNowPayment(plan, userId);
+
+      // حفظ الدفع في Supabase
+      const { data: sub } = await supabase.from('subscriptions').insert({
+        user_id: userId,
+        username,
+        status: 'pending',
+        payment_amount: plan.usd,
+        payment_currency: 'USD',
+        payment_method: 'nowpayments',
+        nowpayment_id: payment.payment_id,
+        email: null,
+      }).select().single();
+
+      // رابط الدفع
+      const payUrl = `https://nowpayments.io/payment/?iid=${payment.payment_id}`;
+
+      const payBtn = Markup.inlineKeyboard([
+        [Markup.button.url(lang === 'ar' ? '💠 ادفع الآن' : '💠 Pay Now', payUrl)],
+        [Markup.button.callback(T[lang].back, `show_pay_methods_${planKey}`)],
+      ]);
+
+      try { await ctx.telegram.deleteMessage(ctx.chat.id, loadingMsg.message_id); } catch (_) {}
+
+      await ctx.reply(T[lang].nowpay_link(plan, payUrl), {
+        parse_mode: 'Markdown',
+        reply_markup: payBtn.reply_markup,
+      });
+
+    } catch (err) {
+      console.error('NOWPayments error:', err.message);
+      try { await ctx.telegram.deleteMessage(ctx.chat.id, loadingMsg.message_id); } catch (_) {}
+      await ctx.reply(T[lang].nowpay_error, { parse_mode: 'Markdown' });
+    }
+  });
+});
+
+// ─── NOWPayments Webhook Handler (يُستدعى من index.js) ──────
+const crypto = require('crypto');
+
+async function handleNowPaymentsWebhook(body, signature) {
+  // التحقق من صحة الطلب
+  const ipnSecret = process.env.NOWPAYMENTS_IPN_SECRET;
+  if (ipnSecret && signature) {
+    const sorted = JSON.stringify(JSON.parse(JSON.stringify(body), (k, v) =>
+      v !== null && typeof v === 'object' && !Array.isArray(v)
+        ? Object.fromEntries(Object.entries(v).sort())
+        : v
+    ));
+    const hmac = crypto.createHmac('sha512', ipnSecret).update(sorted).digest('hex');
+    if (hmac !== signature) {
+      console.error('❌ NOWPayments webhook signature mismatch');
+      return false;
+    }
+  }
+
+  const { payment_id, payment_status, order_id } = body;
+  console.log(`💳 NOWPayments webhook: ${payment_id} → ${payment_status}`);
+
+  if (payment_status === 'finished' || payment_status === 'confirmed') {
+    try {
+      // تحديث حالة الطلب في Supabase
+      const { data: sub } = await supabase
+        .from('subscriptions')
+        .update({ status: 'pending_activation', updated_at: new Date().toISOString() })
+        .eq('nowpayment_id', payment_id)
+        .select().single();
+
+      if (sub) {
+        const lang = getLang(sub.user_id);
+        // طلب الإيميل من المستخدم
+        pendingEmail.set(sub.user_id, sub.id);
+        await bot.telegram.sendMessage(sub.user_id, T[lang].pay_received, { parse_mode: 'Markdown' });
+
+        // إشعار الأدمن
+        const msg =
+          `🔔 *New Crypto Order  #${sub.id}*
+` +
+          `━━━━━━━━━━━━━━━━━━
+` +
+          `👤 @${sub.username || 'N/A'}  (\`${sub.user_id}\`)
+` +
+          `💠 *NOWPayments* · \`${payment_id}\`
+` +
+          `💰 *$${sub.payment_amount} USD*
+` +
+          `📅 ${new Date().toLocaleString('en-GB')}`;
+
+        await bot.telegram.sendMessage(FOUNDER_ID, msg, {
+          parse_mode: 'Markdown',
+          reply_markup: Markup.inlineKeyboard([
+            [Markup.button.callback('✅  Activate', `ok_${sub.id}`), Markup.button.callback('❌  Reject', `no_${sub.id}`)],
+          ]).reply_markup,
+        });
+      }
+    } catch (err) {
+      console.error('NOWPayments webhook DB error:', err.message);
+    }
+  }
+  return true;
+}
+
+bot.nowPaymentsWebhook = handleNowPaymentsWebhook;
 
 // ─── FAQ ─────────────────────────────────────────────────────
 bot.action('nav_faq', async (ctx) => {
