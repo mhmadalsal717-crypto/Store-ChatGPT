@@ -56,30 +56,24 @@ const T = {
     verify_ok:     `✅ *Verified successfully!*\n\n_Redirecting you to the store..._`,
 
     welcome: (name) =>
-`🎉 *Welcome to the Entertainment Subscriptions Store!*
+`🎉 *Welcome to SubsGate Store!*
 
-Hello, *${name}!* 👋
+Hey *${name}* 👋
 
 ━━━━━━━━━━━━━━━━━━
-🌟 *Our Premium Services:*
+🌟 *Your gateway to premium digital subscriptions*
 
-▶️ *YouTube Premium*
-_Ad-free videos, background play & YouTube Originals_
+_We offer the best streaming & AI services at prices far below official rates — fast, secure, and always reliable._
 
-🎬 *Netflix Premium*
-_4K streaming, 4 screens & thousands of exclusive titles_
-
-🎥 *Shahid Plus*
-_The best Arabic series, films & live sports_
+⚡ *Near-instant activation*
+💰 *Prices cheaper than official apps*
+🔒 *Secure payments* via Stars & Crypto
+💬 *24/7 dedicated support*
 ━━━━━━━━━━━━━━━━━━
 
-⚡ *Near-instant activation* after order confirmation
-🔒 *Secure payments* via Telegram Stars & Crypto
-💬 *24/7 support* always at your service
+_Choose from the menu below to get started_ 👇
 
-_Choose an option below to get started_ 👇
-
-📢 *Stay updated:* [SubsGate Channel](https://t.me/SubsGate)`,
+📢 _Stay updated:_ [SubsGate Channel](https://t.me/SubsGate) — _bot news & offers_`,
 
     products:     `🛒  Products`,
     my_orders:    `📦  My Orders`,
@@ -290,30 +284,24 @@ _⚡ Activation within minutes after verification._`,
     verify_ok:     `✅ *تم التحقق بنجاح!*\n\n_جارٍ توجيهك للمتجر..._`,
 
     welcome: (name) =>
-`🎉 *أهلاً بكم في متجر الاشتراكات الترفيهية!*
+`🎉 *أهلاً بك في متجر SubsGate!*
 
-مرحباً، *${name}!* 👋
+مرحباً *${name}* 👋
 
 ━━━━━━━━━━━━━━━━━━
-🌟 *خدماتنا المميزة:*
+🌟 *بوابتك للاشتراكات الرقمية المميزة*
 
-▶️ *يوتيوب بريميوم*
-_بدون إعلانات، تشغيل خلفي ومحتوى حصري_
+_نوفر أفضل خدمات البث والذكاء الاصطناعي بأسعار أقل بكثير من التطبيقات الرسمية — سريع، آمن، وموثوق دائماً._
 
-🎬 *نتفليكس بريميوم*
-_جودة 4K، 4 شاشات وآلاف الأفلام والمسلسلات_
-
-🎥 *شاهد بلس*
-_أفضل المسلسلات العربية والأفلام والرياضة المباشرة_
+⚡ *تفعيل شبه فوري*
+💰 *أسعار أرخص من التطبيقات الرسمية*
+🔒 *دفع آمن* عبر Stars والعملات الرقمية
+💬 *دعم متخصص* على مدار الساعة
 ━━━━━━━━━━━━━━━━━━
 
-⚡ *تفعيل شبه فوري* بعد تأكيد الطلب
-🔒 *دفع آمن* عبر Telegram Stars والعملات الرقمية
-💬 *دعم 24/7* في خدمتك دائماً
+_اختر من القائمة للبدء_ 👇
 
-_اختر من القائمة أدناه للبدء_ 👇
-
-📢 *آخر التحديثات:* [قناة SubsGate](https://t.me/SubsGate)`,
+📢 _آخر التحديثات:_ [قناة SubsGate](https://t.me/SubsGate) — _أخبار وعروض البوت_`,
 
     products:     `🛒  المنتجات`,
     my_orders:    `📦  طلباتي`,
@@ -572,8 +560,7 @@ const kb = {
     [Markup.button.callback(T[l].back, 'back_to_products')],
   ]),
   payMethod: (l, planKey) => Markup.inlineKeyboard([
-    [Markup.button.callback('⭐  Telegram Stars  ·  Pay Now', `pay_stars_${planKey}`)],
-    [Markup.button.callback('🟡  Binance', `pay_binance_${planKey}`), Markup.button.callback('🔵  USDT TRC20', `pay_trc20_${planKey}`)],
+    [Markup.button.callback('🟡  Binance Pay', `pay_binance_${planKey}`), Markup.button.callback('🔵  USDT TRC20', `pay_trc20_${planKey}`)],
     [Markup.button.callback('🟡  USDT BEP20', `pay_bep20_${planKey}`), Markup.button.callback('🔷  USDT ERC20', `pay_erc20_${planKey}`)],
     [Markup.button.callback(T[l].back, `back_plan_${planKey}`)],
   ]),
@@ -902,6 +889,43 @@ Object.keys(PLANS).forEach((key) => {
     await ctx.answerCbQuery();
     const lang = getLang(ctx.from.id);
     const plan = PLANS[key];
+    // Send Stars invoice directly
+    try {
+      await ctx.replyWithInvoice({
+        title: plan.title,
+        description: plan.description,
+        payload: `${key}_${ctx.from.id}_${Date.now()}`,
+        provider_token: '',
+        currency: 'XTR',
+        prices: [{ label: plan.title, amount: plan.amount }],
+        reply_markup: Markup.inlineKeyboard([
+          [Markup.button.pay(`⭐ Pay ${plan.amount} Stars`)],
+          [Markup.button.callback(l => T[lang].back, `show_pay_methods_${key}`)],
+        ]).reply_markup,
+      });
+    } catch (err) {
+      // Fallback: show payment method selection
+      try {
+        await ctx.editMessageCaption(T[lang].choose_payment(plan), {
+          parse_mode: 'Markdown',
+          reply_markup: kb.payMethod(lang, key).reply_markup,
+        });
+      } catch (_) {
+        await editOrReply(ctx, T[lang].choose_payment(plan), {
+          parse_mode: 'Markdown',
+          reply_markup: kb.payMethod(lang, key).reply_markup,
+        });
+      }
+    }
+  });
+});
+
+// Show payment methods (for other payment options)
+Object.keys(PLANS).forEach((key) => {
+  bot.action(`show_pay_methods_${key}`, async (ctx) => {
+    await ctx.answerCbQuery();
+    const lang = getLang(ctx.from.id);
+    const plan = PLANS[key];
     try {
       await ctx.editMessageCaption(T[lang].choose_payment(plan), {
         parse_mode: 'Markdown',
@@ -916,25 +940,7 @@ Object.keys(PLANS).forEach((key) => {
   });
 });
 
-// ─── Pay with Stars ───────────────────────────────────────────
-Object.keys(PLANS).forEach((key) => {
-  bot.action(`pay_stars_${key}`, async (ctx) => {
-    const plan = PLANS[key];
-    try {
-      await ctx.answerCbQuery();
-      await ctx.replyWithInvoice({
-        title: plan.title,
-        description: plan.description,
-        payload: `${key}_${ctx.from.id}_${Date.now()}`,
-        provider_token: '',
-        currency: 'XTR',
-        prices: [{ label: plan.title, amount: plan.amount }],
-      });
-    } catch (err) {
-      try { await ctx.answerCbQuery('❌ Error. Try again.', true); } catch (_) {}
-    }
-  });
-});
+// ─── Pay with Stars (handled via sel_ action directly) ──────
 
 // ─── Pay with Binance / USDT (manual) ────────────────────────
 const manualPayInfo = (lang, method, planKey) => {
@@ -957,7 +963,7 @@ const manualPayInfo = (lang, method, planKey) => {
       await ctx.answerCbQuery();
       const lang = getLang(ctx.from.id);
       const backKb = Markup.inlineKeyboard([
-        [Markup.button.callback(T[lang].back, `back_plan_${planKey}`)],
+        [Markup.button.callback(T[lang].back, `show_pay_methods_${planKey}`)],
       ]);
       try {
         await ctx.editMessageCaption(manualPayInfo(lang, method, planKey), {
