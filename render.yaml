@@ -1,0 +1,36 @@
+services:
+  - type: web
+    name: reseller-bot
+    runtime: node
+    plan: starter          # الخطة المجانية بتنام وبتوقف المُصالح والويبهوك
+    region: frankfurt
+    buildCommand: npm ci
+    startCommand: npm start
+    healthCheckPath: /health
+    envVars:
+      # ---- تلغرام ----
+      - key: BOT_TOKEN
+        sync: false
+      - key: ADMIN_IDS
+        sync: false
+      - key: WEBHOOK_URL
+        sync: false        # حطه بعد أول نشر، بدون / بالآخر
+      - key: WEBHOOK_SECRET
+        generateValue: true
+      # ---- GGSoma ----
+      - key: GG_BASE_URL
+        value: https://ggsoma.store/api/partner/v1
+      - key: GG_API_KEY
+        sync: false
+      # ---- Supabase ----
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_SERVICE_KEY
+        sync: false
+      # ---- Cryptomus (اختياري) ----
+      - key: CRYPTOMUS_MERCHANT_ID
+        sync: false
+      - key: CRYPTOMUS_API_KEY
+        sync: false
+      - key: CRYPTOMUS_PAYMENT_KEY
+        sync: false
