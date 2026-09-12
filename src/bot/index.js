@@ -1,13 +1,15 @@
 // ============================================================
 //  ربط البوت: التوجيه + الشراء + الإدخال + الأوامر
 // ============================================================
-import { Bot, Keyboard } from 'grammy';
+import { Bot } from 'grammy';
 import { cfg, isAdmin } from '../config.js';
 import { db, rpc, ensureUser } from '../lib/db.js';
-import { loadAll, Sbool, Snum, E } from '../lib/settings.js';
+import { loadAll, Sbool, Snum, E, T } from '../lib/settings.js';
 import { esc, money, RULE } from '../lib/fmt.js';
 import { go, to, withLoading } from './nav.js';
 import { kb } from './kb.js';
+import { MENU, mainMenu } from './menu.js';
+import { clear } from './input.js';
 import { purchase } from '../core/purchase.js';
 import { renderDelivery } from './delivery.js';
 import { handleInput } from './handlers.js';
@@ -32,7 +34,7 @@ export const notifyAdmin = (text, replyMarkup = undefined) => {
   }
 };
 
-const homeKb = new Keyboard().text('🏠 القائمة').resized().persistent();
+const homeKb = (tgId) => mainMenu(tgId);
 
 // ---------- حراسة عامة ----------
 bot.use(async (ctx, next) => {
@@ -77,14 +79,36 @@ bot.command('start', async (ctx) => {
     }
   }
 
-  await ctx.reply('…', { reply_markup: homeKb })
-    .then((m) => ctx.api.deleteMessage(ctx.chat.id, m.message_id)).catch(() => {});
-  await go(ctx, 'home');
+  // الترحيب + الكيبورد الثابت بنفس الرسالة
+  await ctx.reply(T('welcome', '<blockquote>👋 مرحبًا بك!</blockquote>'), {
+    parse_mode: 'HTML',
+    link_preview_options: { is_disabled: true },
+    reply_markup: homeKb(ctx.from.id),
+  });
 });
 
-bot.hears('🏠 القائمة', (ctx) => go(ctx, 'home'));
-bot.command('menu',     (ctx) => go(ctx, 'home', [], { forceNew: true }));
-bot.command('admin',    (ctx) => isAdmin(ctx.from.id) && go(ctx, 'admin', [], { forceNew: true }));
+// ---------- أزرار الكيبورد الثابت ----------
+// كل زر بيبعت نص، ومنحوّله للشاشة. لازم يجي قبل معالج الإدخال
+// حتى لو المستخدم بنص عملية إدخال، الزر يلغيها ويطلّعه.
+for (const [label, screenName] of Object.entries(MENU)) {
+  bot.hears(label, async (ctx) => {
+    clear(ctx.from.id);
+    await go(ctx, screenName, [], { forceNew: true });
+  });
+}
+
+// توافق مع النسخة القديمة — لو ضل عند حدا الكيبورد القديم
+bot.hears('🏠 القائمة', (ctx) => go(ctx, 'home', [], { forceNew: true }));
+
+bot.command('menu', async (ctx) => {
+  await ctx.reply(T('welcome', '<blockquote>👋 مرحبًا بك!</blockquote>'), {
+    parse_mode: 'HTML',
+    link_preview_options: { is_disabled: true },
+    reply_markup: homeKb(ctx.from.id),
+  });
+});
+
+bot.command('admin', (ctx) => isAdmin(ctx.from.id) && go(ctx, 'admin', [], { forceNew: true }));
 
 // ---------- الشراء (لازم يجي قبل الموجّه العام) ----------
 bot.callbackQuery(/^n:buy:(.+)$/, async (ctx) => {
