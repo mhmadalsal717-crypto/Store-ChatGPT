@@ -135,7 +135,7 @@ const HANDLERS = {
     if (field === 'markup') {
       const { basePrice } = await import('../core/pricing.js');
       const { data: p } = await db.from('products').select('cost_price').eq('slug', slug).single();
-      const mk = val ?? Snum('markup_pct', 25);
+      const mk = val ?? Snum('markup_pct', 40);
       await db.from('products').update({ sell_price: basePrice(p.cost_price, mk) }).eq('slug', slug);
     }
 
