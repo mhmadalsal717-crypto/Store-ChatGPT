@@ -9,6 +9,7 @@ import { esc, money, RULE } from '../lib/fmt.js';
 import { go, to, withLoading } from './nav.js';
 import { kb } from './kb.js';
 import { MENU, mainMenu } from './menu.js';
+import { t, welcomeText, DEFAULT_LANG } from '../lib/i18n.js';
 import { clear } from './input.js';
 import { purchase } from '../core/purchase.js';
 import { renderDelivery } from './delivery.js';
@@ -34,7 +35,7 @@ export const notifyAdmin = (text, replyMarkup = undefined) => {
   }
 };
 
-const homeKb = (tgId) => mainMenu(tgId);
+const homeKb = (tgId, lang) => mainMenu(tgId, lang);
 
 // ---------- حراسة عامة ----------
 bot.use(async (ctx, next) => {
@@ -49,7 +50,11 @@ bot.use(async (ctx, next) => {
     return;
   }
 
-  const { data: u } = await db.from('users').select('banned').eq('tg_id', ctx.from.id).maybeSingle();
+  // لغة المستخدم بتنقرأ هون مرة وحدة — كل الشاشات بتستعمل ctx.lang
+  const { data: u } = await db.from('users')
+    .select('banned, lang').eq('tg_id', ctx.from.id).maybeSingle();
+  ctx.lang = u?.lang || DEFAULT_LANG;
+
   if (u?.banned) {
     if (ctx.callbackQuery) await ctx.answerCallbackQuery({ text: '🚫 حسابك محظور.', show_alert: true });
     return;
@@ -80,10 +85,10 @@ bot.command('start', async (ctx) => {
   }
 
   // الترحيب + الكيبورد الثابت بنفس الرسالة
-  await ctx.reply(T('welcome', '<blockquote>👋 مرحبًا بك!</blockquote>'), {
+  await ctx.reply(welcomeText(ctx.lang), {
     parse_mode: 'HTML',
     link_preview_options: { is_disabled: true },
-    reply_markup: homeKb(ctx.from.id),
+    reply_markup: homeKb(ctx.from.id, ctx.lang),
   });
 });
 
@@ -101,12 +106,15 @@ for (const [label, screenName] of Object.entries(MENU)) {
 bot.hears('🏠 القائمة', (ctx) => go(ctx, 'home', [], { forceNew: true }));
 
 bot.command('menu', async (ctx) => {
-  await ctx.reply(T('welcome', '<blockquote>👋 مرحبًا بك!</blockquote>'), {
+  await ctx.reply(welcomeText(ctx.lang), {
     parse_mode: 'HTML',
     link_preview_options: { is_disabled: true },
-    reply_markup: homeKb(ctx.from.id),
+    reply_markup: homeKb(ctx.from.id, ctx.lang),
   });
 });
+
+// ---------- تغيير اللغة ----------
+bot.command('lang', (ctx) => go(ctx, 'lang', [], { forceNew: true }));
 
 bot.command('admin', (ctx) => isAdmin(ctx.from.id) && go(ctx, 'admin', [], { forceNew: true }));
 
@@ -197,9 +205,17 @@ export const sendResult = (chatId, result) =>
 // ---------- إعداد واجهة البوت ----------
 export async function setupBotUI() {
   await bot.api.setMyCommands([
-    { command: 'start', description: 'القائمة الرئيسية' },
-    { command: 'menu',  description: 'فتح القائمة' },
+    { command: 'start', description: t('ar', 'cmd.start') },
+    { command: 'menu',  description: t('ar', 'cmd.menu') },
+    { command: 'lang',  description: t('ar', 'cmd.lang') },
   ]).catch(() => {});
+
+  // قائمة منفصلة للمستخدمين بواجهة إنكليزية
+  await bot.api.setMyCommands([
+    { command: 'start', description: t('en', 'cmd.start') },
+    { command: 'menu',  description: t('en', 'cmd.menu') },
+    { command: 'lang',  description: t('en', 'cmd.lang') },
+  ], { language_code: 'en' }).catch(() => {});
   await bot.api.setChatMenuButton({ menu_button: { type: 'commands' } }).catch(() => {});
   await bot.api.setMyShortDescription('اشتراكات رقمية بتسليم فوري').catch(() => {});
   await bot.api.setMyDescription(
