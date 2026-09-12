@@ -24,8 +24,19 @@ mountWebhooks(app, { bot, notifyAdmin, secret: cfg.bot.secret });
 app.use(express.json());
 
 // ---------- Webhook أو Long polling ----------
+// المسار لازم ينسجّل قبل ما نفتح المنفذ
 if (cfg.bot.webhookUrl) {
-  app.use(`/tg/${cfg.bot.secret}`, webhookCallback(bot, 'express'));
+  app.post(`/tg/${cfg.bot.secret}`, webhookCallback(bot, 'express'));
+}
+
+// افتح المنفذ أولاً — بعدين قول لتلغرام يبعت.
+// بالعكس: أول تحديث بيوصل على منفذ مسكّر وبيضيع.
+await new Promise((resolve) =>
+  app.listen(cfg.port, () => { console.log('✔ يستمع على المنفذ', cfg.port); resolve(); })
+);
+
+if (cfg.bot.webhookUrl) {
+  await bot.init();
   await bot.api.setWebhook(`${cfg.bot.webhookUrl}/tg/${cfg.bot.secret}`, {
     drop_pending_updates: true,
     allowed_updates: ['message', 'callback_query', 'pre_checkout_query'],
@@ -36,7 +47,6 @@ if (cfg.bot.webhookUrl) {
   console.log('✔ long polling');
 }
 
-app.listen(cfg.port, () => console.log('✔ يستمع على المنفذ', cfg.port));
 await setupBotUI();
 
 // ---------- المهام الدورية ----------
