@@ -466,7 +466,7 @@ screen('a_sync', async (ctx) => {
 
     return { text: `🔄 <b>تمت المزامنة</b>\n${RULE}\n` +
                    `مزوّدين: <b>${r.providers}</b>\nمنتجات: <b>${r.products}</b>\n` +
-                   `🆕 جديد: ${r.added.length} · 🔄 عاد للمخزون: ${r.restocked.length}` + extra,
+                   `🆕 جديد: ${r.added} · 🔄 عاد للمخزون: ${r.restocked} · 🗑 محذوف: ${r.removed}` + extra,
              kb: kb().text('« رجوع', to('admin')).build() };
   } catch (e) {
     return { text: `❌ فشلت المزامنة:\n<code>${esc(e.code || e.message)}</code>`,
