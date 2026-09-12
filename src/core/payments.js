@@ -58,10 +58,13 @@ export async function creditPayment(orderId, externalId = null) {
 
 /** تنظيف الجلسات المنتهية */
 export async function expireStale() {
+  // ⚠️ ما منلغي دفعة بايننس الزبون لصق فيها رقم العملية وهي بانتظار
+  //    مراجعة الأدمن — وإلا بتختفي من طابور المراجعة والزبون بيضيع حقه.
   const { data } = await db.from('payments')
     .update({ status: 'EXPIRED', updated_at: new Date().toISOString() })
     .eq('status', 'PENDING')
     .lt('expires_at', new Date().toISOString())
+    .is('external_id', null)
     .select('order_id');
   return data?.length || 0;
 }
