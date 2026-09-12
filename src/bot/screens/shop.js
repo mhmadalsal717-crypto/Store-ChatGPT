@@ -4,11 +4,12 @@
 import { screen, to } from '../nav.js';
 import { kb, stockStyle } from '../kb.js';
 import { ensureUser } from '../../lib/db.js';
-import { E, T, Snum, Sbool } from '../../lib/settings.js';
+import { E, Snum, Sbool } from '../../lib/settings.js';
 import { esc, money, RULE, quote, deliveryLabel } from '../../lib/fmt.js';
 import { listProviders, listProducts, getProduct,
          productDesc, productInstr } from '../../core/catalog.js';
 import { clip } from '../../lib/html.js';
+import { welcomeText } from '../../lib/i18n.js';
 import { finalPrice, listPrice } from '../../core/pricing.js';
 import { isAdmin } from '../../config.js';
 
@@ -17,10 +18,7 @@ import { isAdmin } from '../../config.js';
 // النص بينتحكم فيه من: ⚙️ لوحة التحكم ← 📝 النصوص ← رسالة الترحيب
 screen('home', async (ctx) => {
   await ensureUser(ctx.from);
-  return {
-    text: T('welcome', '<blockquote>👋 مرحبًا بك!</blockquote>'),
-    kb: kb().build(),
-  };
+  return { text: welcomeText(ctx.lang), kb: kb().build() };
 });
 
 // ---------- المزوّدين ----------
