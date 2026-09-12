@@ -1,4 +1,4 @@
-Enter// ============================================================
+// ============================================================
 //  مزامنة الكتالوج — التنسيق الكامل مع GGSoma
 //
 //  كل شي بيجي من عندهم تلقائياً:
@@ -16,7 +16,7 @@ import { basePrice } from './pricing.js';
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 export async function syncCatalog() {
-  const globalMarkup = Snum('markup_pct', 25);
+  const globalMarkup = Snum('markup_pct', 40);
 
   // ---------- 1) المزوّدين ----------
   const provRes = await gg.providers();
@@ -47,7 +47,8 @@ export async function syncCatalog() {
 
   const { data: before } = await db.from('products')
     .select('slug, in_stock, stock_count, markup_pct, price_override, visible, ' +
-            'custom_emoji_id, deleted_at, details_synced_at');
+            'custom_emoji_id, deleted_at, details_synced_at, ' +
+            'cost_price, sell_price, paused');
   const old = Object.fromEntries((before || []).map((r) => [r.slug, r]));
 
   const rows = [], added = [], restocked = [], priceMoves = [];
