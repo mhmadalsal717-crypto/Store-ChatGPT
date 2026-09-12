@@ -1,4 +1,4 @@
-Enterimport { createClient } from '@supabase/supabase-js';
+import { createClient } from '@supabase/supabase-js';
 import { cfg } from '../config.js';
 
 export const db = createClient(cfg.db.url, cfg.db.key, { auth: { persistSession: false } });
