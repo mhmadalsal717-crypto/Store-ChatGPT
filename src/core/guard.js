@@ -40,7 +40,7 @@ export async function enforceMargins() {
             'paused, paused_reason, visible')
     .is('deleted_at', null);
 
-  if (!products?.length) return [];
+  if (!products?.length) return { paused: [], resumed: [] };
 
   const paused = [], resumed = [];
 
