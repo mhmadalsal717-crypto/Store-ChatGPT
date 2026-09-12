@@ -9,29 +9,18 @@ import { esc, money, RULE, quote, deliveryLabel } from '../../lib/fmt.js';
 import { listProviders, listProducts, getProduct,
          productDesc, productInstr } from '../../core/catalog.js';
 import { clip } from '../../lib/html.js';
-import { finalPrice, listPrice, tierOf } from '../../core/pricing.js';
+import { finalPrice, listPrice } from '../../core/pricing.js';
 import { isAdmin } from '../../config.js';
 
 // ---------- الرئيسية ----------
+// ما في أزرار inline هون — التنقّل صار من الكيبورد الثابت (menu.js).
+// النص بينتحكم فيه من: ⚙️ لوحة التحكم ← 📝 النصوص ← رسالة الترحيب
 screen('home', async (ctx) => {
-  const u = await ensureUser(ctx.from);
-  const t = tierOf(u.total_spent);
-
-  const text =
-    `${T('welcome', 'أهلاً فيك 👋')}\n${RULE}\n` +
-    `${E('balance')} رصيدك: <b>${money(u.balance)}</b>\n` +
-    (t ? `${t.emoji} مستواك: <b>${esc(t.name)}</b>` +
-         (Number(t.discount_pct) > 0 ? ` · خصم ${t.discount_pct}%` : '') + '\n' : '');
-
-  const k = kb()
-    .add({ text: `${'🛒'} المنتجات`, data: to('providers'), style: 'primary' }).row()
-    .text('👤 ملفي', to('profile')).text('🎁 الدعوات', to('invites')).row()
-    .text('💳 شحن بكود', to('voucher')).text('💰 شحن رصيد', to('topup')).row()
-    .text('❓ المساعدة', to('help')).text('📜 السياسة', to('policy')).row();
-
-  if (isAdmin(ctx.from.id)) k.text('⚙️ لوحة التحكم', to('admin')).row();
-
-  return { text, kb: k.build() };
+  await ensureUser(ctx.from);
+  return {
+    text: T('welcome', '<blockquote>👋 مرحبًا بك!</blockquote>'),
+    kb: kb().build(),
+  };
 });
 
 // ---------- المزوّدين ----------
