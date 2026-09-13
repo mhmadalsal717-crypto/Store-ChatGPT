@@ -5,7 +5,7 @@ import { screen, to, go } from '../nav.js';
 import { kb } from '../kb.js';
 import { db, rpc } from '../../lib/db.js';
 import { esc, money, RULE, arDate, statusIcon, trim } from '../../lib/fmt.js';
-import { loadAll, invalidate, S, Sbool, setSetting } from '../../lib/settings.js';
+import { loadAll, invalidate, S, T, Sbool, setSetting } from '../../lib/settings.js';
 import { listPrice } from '../../core/pricing.js';
 import { listAllProviders } from '../../core/catalog.js';
 import { ask } from '../input.js';
@@ -784,7 +784,9 @@ screen('a_gate', async (ctx) => {
   if (!isAdmin(ctx.from.id)) return { text: '⛔️', kb: kb().build() };
 
   const on = Sbool('force_join', false);
-  const f  = (k) => (S(k) || '').trim() || '— فاضي';
+  // ⚠️ T مو S — الروابط محفوظة بجدول texts مو settings.
+  //    هون كانت الواجهة تعرض «فاضي» مهما حفظت.
+  const f  = (k) => (T(k) || '').trim() || '— فاضي';
 
   return {
     text: `🚪 <b>بوابة الدخول</b>\n${RULE}\n` +
