@@ -117,6 +117,30 @@ const HANDLERS = {
     await go(ctx, 'a_emoji', [], { forceNew: true });
   },
 
+  async provider(ctx, body, { key, field }) {
+    const v = String(body).trim();
+
+    if (field === 'order') {
+      const n = parseInt(v.replace(/[^\d-]/g, ''), 10);
+      if (!Number.isFinite(n)) {
+        ask(ctx.from.id, 'provider', { key, field });
+        return ctx.reply('❌ أرسل رقم فقط، مثل <code>10</code>', { parse_mode: 'HTML' });
+      }
+      await db.from('providers').update({ sort_order: n }).eq('key', key);
+    } else {
+      // «-» بتمسح الإيموجي. غير هيك منقبل رمز قصير بس، حتى ما
+      // ينحط اسم أو معرّف رقمي بالخطأ ويطلع بنص الزر.
+      const clear = v === '-' || v === '';
+      if (!clear && ([...v].length > 4 || /^[\x00-\x7F]+$/.test(v))) {
+        ask(ctx.from.id, 'provider', { key, field });
+        return ctx.reply('❌ أرسل إيموجي واحد، أو <code>-</code> للحذف.', { parse_mode: 'HTML' });
+      }
+      await db.from('providers').update({ emoji: clear ? null : v }).eq('key', key);
+    }
+
+    await go(ctx, 'a_prov', [key], { forceNew: true });
+  },
+
   async product(ctx, body, { slug, field }) {
     const clear = DASH(body);
     const map = {
