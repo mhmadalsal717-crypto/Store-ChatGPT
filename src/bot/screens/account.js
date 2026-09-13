@@ -35,13 +35,18 @@ screen('profile', async (ctx) => {
     `📅 تاريخ التسجيل: ${arDate(u.created_at)}`,
   ].filter(Boolean).join('\n');
 
+  // 7 أزرار بالضبط — نفس بوت GGSoma.
+  //
+  // شو انشال وليش:
+  //   «شحن رصيد»  -> موجود بالكيبورد الثابت، تكرار
+  //   «الرئيسية»  -> الكيبورد الثابت هو الرئيسية، تكرار
+  //   «سجل الشحن» -> انتقل جوّا شاشة الشحن، مكانه الطبيعي
+  //   «الإشعارات» -> إعداد مو إجراء، انتقل لشاشة الإعدادات
   const k = kb()
     .text('📋 طلباتي', to('orders', '1')).text('🏅 حالتي', to('tier')).row()
-    .text('🏦 كشف المحفظة', to('ledger', '1')).text('🧾 سجل الشحن', to('pay_log')).row()
-    .text('💰 طلب سحب', to('wd_new')).text('📄 طلبات السحب', to('wd_list')).row()
-    .text('🧾 ملف السحب', to('wd_profile')).text('💰 شحن رصيد', to('topup')).row()
-    .text(u.notify_stock ? '🔔 الإشعارات: مفعّلة' : '🔕 الإشعارات: مطفأة', to('notif')).row()
-    .text('« الرئيسية', to('home'));
+    .text('🏦 كشف المحفظة', to('ledger', '1')).text('💰 طلب سحب', to('wd_new')).row()
+    .text('🧾 ملف السحب', to('wd_profile')).text('📄 طلبات السحب', to('wd_list')).row()
+    .text('✖️ إغلاق', to('close'));
 
   return { text, kb: k.build() };
 });
