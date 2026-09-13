@@ -27,9 +27,11 @@ screen('topup', async (ctx) => {
   if (Sbool('pay_stars', true))
     k.add({ text: '⭐️ الدفع عبر Telegram Stars', data: to('pay_st'), style: 'success' }).row();
 
-  k.add({ text: '🔙 رجوع', data: to('home'), style: 'danger' }).row();
+  // سجل الشحن انتقل لهون من شاشة الملف الشخصي — مكانه الطبيعي
+  k.text('🧾 سجل الشحن', to('pay_log')).row();
+  k.text('✖️ إغلاق', to('close')).row();
 
-  const none = k.rows.length <= 1;
+  const none = k.rows.length <= 2;
 
   return {
     text: `${E('balance')} <b>شحن رصيد</b>\n${RULE}\n` +
