@@ -1,12 +1,13 @@
 // ============================================================
 //  لوحة التحكم — كل شي بينتحكم فيه من هون بدون لمس الكود
 // ============================================================
-import { screen, to } from '../nav.js';
+import { screen, to, go } from '../nav.js';
 import { kb } from '../kb.js';
 import { db, rpc } from '../../lib/db.js';
 import { esc, money, RULE, arDate, statusIcon, trim } from '../../lib/fmt.js';
 import { loadAll, invalidate, S, Sbool, setSetting } from '../../lib/settings.js';
 import { listPrice } from '../../core/pricing.js';
+import { listAllProviders } from '../../core/catalog.js';
 import { ask } from '../input.js';
 import { isAdmin } from '../../config.js';
 
@@ -43,6 +44,7 @@ screen('admin', async (ctx) => {
     .text('🎨 المظهر', to('a_set', 'المظهر')).text('🔔 الإشعارات', to('a_set', 'الإشعارات')).row()
     .text('⚙️ النظام', to('a_set', 'النظام')).text('💳 الدفع', to('a_set', 'الدفع')).row()
     .text('📝 النصوص', to('a_texts')).text('😀 الإيموجي', to('a_emoji')).row()
+    .text('🗂 المزوّدين', to('a_provs')).row()
     .text('📦 المنتجات', to('a_prods', '1')).row()
     .text(`📤 السحوبات${badge(wd.count)}`, to('a_wds')).row()
     .text(`⏳ الطلبات العالقة${badge(stuck.count)}`, to('a_stuck')).row()
@@ -686,4 +688,83 @@ screen('a_clearmanual', async (ctx) => {
                  `<i>الأسعار بتنحدّث بالمزامنة الجاية.</i>`,
            kb: kb().add({ text: '🔄 مزامنة الآن', data: to('a_sync'), style: 'primary' }).row()
                    .text('« التسعير', to('a_pricing')).build() };
+});
+
+
+// ============================================================
+//  إدارة المزوّدين
+//
+//  ليش يدوي: الوثائق §17 بتقول إن ترتيب وتخطيط بوت GGSoma
+//  قواعد داخلية عندهم، والـ API بيعطي sortOrder بس. والإيموجي
+//  يلي بيعرضوه إيموجي بريميوم مخصص — ما بيشتغل إلا لصاحب بوت
+//  مشترك بريميوم. فمنخلّي الأدمن يضبط الشكل بنفسه.
+// ============================================================
+screen('a_provs', async (ctx) => {
+  if (!isAdmin(ctx.from.id)) return { text: '⛔️', kb: kb().build() };
+
+  const provs = await listAllProviders();
+  if (!provs.length) {
+    return { text: '📭 ما في مزوّدين. شغّل المزامنة أول.',
+             kb: kb().text('« رجوع', to('admin')).build() };
+  }
+
+  const k = kb();
+  for (const p of provs) {
+    const eye = p.visible ? '👁' : '🙈';
+    const w   = p.full_width ? '▬' : '▪';
+    k.text(`${eye}${w} ${p.emoji || '·'} ${p.name}`, to('a_prov', p.key)).row();
+  }
+  k.text('« رجوع', to('admin'));
+
+  return {
+    text: `🗂 <b>المزوّدين</b>\n\n` +
+          `👁 ظاهر · 🙈 مخفي\n▬ سطر كامل · ▪ نص سطر\n\n` +
+          `اضغط مزوّد لتعديله:`,
+    kb: k.build(),
+  };
+});
+
+screen('a_prov', async (ctx, [key]) => {
+  if (!isAdmin(ctx.from.id)) return { text: '⛔️', kb: kb().build() };
+
+  const { data: p } = await db.from('providers').select('*').eq('key', key).maybeSingle();
+  if (!p) return { text: '❌ مزوّد غير موجود.',
+                   kb: kb().text('« رجوع', to('a_provs')).build() };
+
+  return {
+    text: `🗂 <b>${esc(p.name)}</b>\n${RULE}\n` +
+          `😀 الإيموجي: ${p.emoji || '— ما في'}\n` +
+          `🔢 الترتيب: <b>${p.sort_order ?? 100}</b>\n` +
+          `👁 الظهور: <b>${p.visible ? 'ظاهر' : 'مخفي'}</b>\n` +
+          `↔️ العرض: <b>${p.full_width ? 'سطر كامل' : 'نص سطر'}</b>\n` +
+          (p.custom_emoji_id
+            ? `\n⭐ إيموجي مخصص محفوظ — بيظهر بس لو فعّلت «إيموجي بريميوم».`
+            : ''),
+    kb: kb()
+      .text('😀 غيّر الإيموجي', to('a_pvset', key, 'emoji')).row()
+      .text('🔢 غيّر الترتيب', to('a_pvset', key, 'order')).row()
+      .text(p.visible ? '🙈 إخفاء' : '👁 إظهار', to('a_pvtog', key, 'visible'))
+      .text(p.full_width ? '▪ نص سطر' : '▬ سطر كامل', to('a_pvtog', key, 'width')).row()
+      .text('« رجوع', to('a_provs'))
+      .build(),
+  };
+});
+
+screen('a_pvtog', async (ctx, [key, what]) => {
+  if (!isAdmin(ctx.from.id)) return { text: '⛔️', kb: kb().build() };
+  const col = what === 'width' ? 'full_width' : 'visible';
+  const { data: p } = await db.from('providers').select(col).eq('key', key).maybeSingle();
+  await db.from('providers').update({ [col]: !p?.[col] }).eq('key', key);
+  return go(ctx, 'a_prov', [key]);
+});
+
+screen('a_pvset', async (ctx, [key, field]) => {
+  if (!isAdmin(ctx.from.id)) return { text: '⛔️', kb: kb().build() };
+  ask(ctx.from.id, 'provider', { key, field });
+  return {
+    text: field === 'emoji'
+      ? `😀 أرسل الإيموجي الجديد (إيموجي واحد).\nأرسل <code>-</code> لحذفه.`
+      : `🔢 أرسل رقم الترتيب.\nالأصغر بيطلع أول. مثال: <code>10</code>`,
+    kb: kb().text('« إلغاء', to('a_prov', key)).build(),
+  };
 });
