@@ -52,9 +52,15 @@ bot.use(async (ctx, next) => {
   }
 
   // لغة المستخدم بتنقرأ هون مرة وحدة — كل الشاشات بتستعمل ctx.lang
-  const { data: u } = await db.from('users')
-    .select('banned, lang').eq('tg_id', ctx.from.id).maybeSingle();
+  //
+  // ⚠️ لو عمود lang_set ناقص (10_onboarding.sql ما انشغّل) الاستعلام
+  // بيفشل كامل. وقتها منعتبر البوابة مكمّلة بدل ما نحبس كل الزبائن
+  // بشاشة اللغة للأبد.
+  const { data: u, error: uErr } = await db.from('users')
+    .select('banned, lang, lang_set').eq('tg_id', ctx.from.id).maybeSingle();
+  if (uErr) console.error('[guard] قراءة المستخدم فشلت:', uErr.message);
   ctx.lang = u?.lang || DEFAULT_LANG;
+  const gateReady = !uErr;
 
   if (u?.banned) {
     if (ctx.callbackQuery) await ctx.answerCallbackQuery({ text: t(ctx, 'sys.banned'), show_alert: true });
@@ -66,7 +72,7 @@ bot.use(async (ctx, next) => {
   const data = ctx.callbackQuery?.data || '';
   const inGate = data.startsWith('n:ob_');
 
-  if (!isAdmin(ctx.from.id) && !inGate) {
+  if (gateReady && !isAdmin(ctx.from.id) && !inGate) {
     if (!u?.lang_set) { await go(ctx, 'ob_lang', [], { forceNew: true }); return; }
     if (!(await isJoined(ctx.api, ctx.from.id))) {
       await go(ctx, 'ob_join', [], { forceNew: true }); return;
@@ -103,16 +109,6 @@ bot.command('start', async (ctx) => {
     link_preview_options: { is_disabled: true },
     reply_markup: homeKb(ctx.from.id, ctx.lang),
   });
-});
-
-// ---------- نهاية البوابة: الترحيب + الكيبورد ----------
-screen('ob_done', async (ctx) => {
-  await ctx.reply(welcomeText(ctx.lang), {
-    parse_mode: 'HTML',
-    link_preview_options: { is_disabled: true },
-    reply_markup: homeKb(ctx.from.id, ctx.lang),
-  }).catch(() => {});
-  return { text: '✅', kb: kb().build() };
 });
 
 // ---------- أزرار الكيبورد الثابت ----------
