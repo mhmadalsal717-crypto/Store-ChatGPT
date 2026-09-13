@@ -31,6 +31,10 @@ export async function go(ctx, name, args = [], { forceNew = false } = {}) {
   // جديد، فسلسلة مغلقة رح تفجّر المكدّس — لهيك احرص ما تعمل حلقة.
   if (view?.goto) return go(ctx, view.goto, view.args || [], { forceNew });
 
+  // شاشة رجّعت فاضي = تصرّفت بنفسها (بعتت رسالة، مسحت، إلخ).
+  // بدون هالسطر كنا مضطرين نرجّع نص وهمي فيطلع «✅» يتيم للزبون.
+  if (!view?.text) return;
+
   const opts = {
     parse_mode: 'HTML',
     link_preview_options: { is_disabled: true },
