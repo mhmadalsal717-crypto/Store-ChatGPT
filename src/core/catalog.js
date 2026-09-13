@@ -260,12 +260,29 @@ async function pullDetailsBatch(live) {
 }
 
 // ---------- قراءات ----------
+/** الاسم المعروض — التعديل اليدوي بيغلب اسم GGSoma */
+export const provName = (p) => (p?.name_override || p?.name || '').trim();
+
 export async function listProviders() {
   // الترتيب الثاني بالاسم مقصود: sortOrder عندهم بيتكرّر كتير،
   // وبدون فاصل حاسم بيتبدّل ترتيب الأزرار كل مزامنة والزبون بيتوه.
   const { data } = await db.from('providers')
     .select('*').eq('visible', true)
     .order('sort_order').order('name');
+  return data || [];
+}
+
+/**
+ * كل المتوفّر الآن، مرتّب بنفس ترتيب شاشة المنتجات.
+ * الربط بـ providers!inner بيضمن إن منتجات مزوّد مخفي ما تطلع.
+ */
+export async function listAvailable() {
+  const { data } = await db.from('products')
+    .select('slug, name, emoji, custom_emoji_id, sell_price, price_override, ' +
+            'stock_count, provider_key, sort_order, providers!inner(name, name_override, emoji, sort_order, visible)')
+    .eq('visible', true).eq('paused', false).eq('in_stock', true)
+    .is('deleted_at', null).eq('providers.visible', true)
+    .order('sort_order');
   return data || [];
 }
 
