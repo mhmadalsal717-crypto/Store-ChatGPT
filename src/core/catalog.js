@@ -62,8 +62,14 @@ export async function syncCatalog() {
     const mk = o?.markup_pct ?? globalMarkup;
 
     // كشف التغيّر بالمخزون
-    if (!o || o.deleted_at) {
+    //
+    // ⚠️ منتج راجع من الحذف لازم يكون RESTOCK مو NEW. لو GGSoma
+    // شالته دورة وحدة ورجّعته (يصير كتير)، بدون هالتفريق كان
+    // بينحسب «منتج جديد» كل مرة ويطلع إشعار مكرّر.
+    if (!o) {
       if (inStock && stock > 0) added.push({ slug: p.slug, delta: stock, stock });
+    } else if (o.deleted_at) {
+      if (inStock && stock > 0) restocked.push({ slug: p.slug, delta: stock, stock });
     } else {
       const delta = stock - (o.stock_count ?? 0);
       // زيادة حقيقية فقط. النقصان طبيعي (مبيعات) وما بينبّه عليه.
@@ -124,7 +130,15 @@ export async function syncCatalog() {
   const removed = (before || [])
     .filter((r) => !liveSet.has(r.slug) && !r.deleted_at).map((r) => r.slug);
 
-  if (removed.length) {
+  // حارس: رد فاضي أو ناقص بشكل مريب = لا تحذف شي.
+  // بدون هالفحص، خلل مؤقت عندهم بيمسح كتالوجك كله ويطلّع
+  // عشرات إشعارات «منتج جديد» لما يرجع.
+  const tooMany = before?.length && removed.length > before.length * 0.5;
+  if (tooMany) {
+    console.error(`[sync] رُفض حذف ${removed.length} من ${before.length} — رد مشبوه`);
+  }
+
+  if (removed.length && !tooMany) {
     await db.from('products').update({
       in_stock: false, stock_count: 0,
       deleted_at: new Date().toISOString(),
@@ -137,7 +151,10 @@ export async function syncCatalog() {
     ...added.map((a)     => ({ slug: a.slug, kind: 'NEW',     delta: a.delta, stock_now: a.stock })),
     ...restocked.map((a) => ({ slug: a.slug, kind: 'RESTOCK', delta: a.delta, stock_now: a.stock })),
   ];
-  if (alerts.length) await db.from('stock_alerts').insert(alerts);
+  if (alerts.length) {
+    const fresh = await dedupeAlerts(alerts);
+    if (fresh.length) await db.from('stock_alerts').insert(fresh);
+  }
 
   // ---------- 5) التفاصيل ----------
   const detailsPulled = await pullDetailsBatch(live);
@@ -150,6 +167,37 @@ export async function syncCatalog() {
 }
 
 /**
+ * إزالة التكرار من طابور الإشعارات — سببين منفصلين:
+ *
+ *   أ) نفس المنتج لسه بالطابور من دورة سابقة ما انبعتت بعد.
+ *      مع مزامنة كل دقيقة هاد بيصير كتير.
+ *   ب) نفس المنتج انبعت له إشعار قريب. مخزون بيزيد على دفعات
+ *      (10 هلق، 5 بعد دقيقتين) كان بيطلّع إشعار لكل دفعة.
+ *      مهلة التهدئة بتجمعهم بإشعار واحد.
+ */
+async function dedupeAlerts(alerts) {
+  const slugs = [...new Set(alerts.map((a) => a.slug))];
+  const cooldownMin = Snum('alert_cooldown_min', 90);
+  const since = new Date(Date.now() - cooldownMin * 60_000).toISOString();
+
+  const { data: recent } = await db.from('stock_alerts')
+    .select('slug, status, created_at')
+    .in('slug', slugs)
+    .or(`status.eq.QUEUED,created_at.gte.${since}`);
+
+  const blocked = new Set((recent || []).map((r) => r.slug));
+
+  // لو نفس المنتج إجا مرتين بنفس الدورة، خُد الأكبر دلتا
+  const best = new Map();
+  for (const a of alerts) {
+    if (blocked.has(a.slug)) continue;
+    const cur = best.get(a.slug);
+    if (!cur || a.delta > cur.delta) best.set(a.slug, a);
+  }
+  return [...best.values()];
+}
+
+/**
  * سحب الأوصاف والتعليمات.
  *
  * مسار القائمة ما بيرجّع description/instructions — لازم نداء منفصل
@@ -158,12 +206,17 @@ export async function syncCatalog() {
  * خلال دورتين تلاتة بيكون كل الكتالوج مسحوب وبعدين بيتجدّد بالتناوب.
  */
 async function pullDetailsBatch(live) {
-  const perRun = Snum('details_per_sync', 15);
+  const perRun     = Snum('details_per_sync', 15);
+  const refreshHrs = Snum('details_refresh_hrs', 12);
   if (perRun <= 0) return 0;
 
+  const nowIso = new Date().toISOString();
+
+  // بس المنتجات يلي حان وقتها. details_next_try = null يعني «ما انسحبت أبداً»
   const { data: need } = await db.from('products')
-    .select('slug').is('deleted_at', null)
-    .order('details_synced_at', { ascending: true, nullsFirst: true })
+    .select('slug, details_attempts').is('deleted_at', null)
+    .or(`details_next_try.is.null,details_next_try.lte.${nowIso}`)
+    .order('details_next_try', { ascending: true, nullsFirst: true })
     .limit(perRun);
 
   if (!need?.length) return 0;
@@ -183,13 +236,23 @@ async function pullDetailsBatch(live) {
         has_instructions: !!(d.instructions || byslug[row.slug]?.flags?.hasInstructions),
         gg_updated_at: d.updatedAt || null,
         details_synced_at: new Date().toISOString(),
+        details_attempts: 0,
+        details_next_try: new Date(Date.now() + refreshHrs * 3600_000).toISOString(),
       }).eq('slug', row.slug);
       n++;
     } catch (e) {
-      // انحذف بين النداءين أو خطأ مؤقت — علّمه ونكمّل
-      await db.from('products')
-        .update({ details_synced_at: new Date().toISOString() }).eq('slug', row.slug);
+      // حد الطلبات مو ذنب المنتج — اوقف الدفعة بدون ما تعاقبه
       if (e.code === 'RATE_LIMIT_EXCEEDED') break;
+
+      // ⚠️ الكود القديم كان يختم details_synced_at هون، فالمنتج
+      // ينزل لآخر الطابور ويضل بلا وصف لساعات. هلق تراجع تصاعدي:
+      // 2، 4، 8… دقيقة بحد أقصى ساعتين — بيرجع بسرعة بس ما بيعلّق الطابور.
+      const att = (row.details_attempts || 0) + 1;
+      const backoffMin = Math.min(2 ** att, 120);
+      await db.from('products').update({
+        details_attempts: att,
+        details_next_try: new Date(Date.now() + backoffMin * 60_000).toISOString(),
+      }).eq('slug', row.slug);
     }
     await sleep(1100);   // ابقَ تحت 60 نداء/دقيقة
   }
