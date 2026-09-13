@@ -9,7 +9,7 @@ import { esc, money, RULE, quote, deliveryLabel } from '../../lib/fmt.js';
 import { listProviders, listProducts, getProduct, listAvailable, provName,
          productDesc, productInstr } from '../../core/catalog.js';
 import { clip } from '../../lib/html.js';
-import { welcomeText } from '../../lib/i18n.js';
+import { welcomeText, t } from '../../lib/i18n.js';
 import { finalPrice, listPrice } from '../../core/pricing.js';
 import { isAdmin } from '../../config.js';
 
@@ -22,34 +22,38 @@ screen('home', async (ctx) => {
 });
 
 // ---------- المزوّدين ----------
-screen('providers', async () => {
+screen('providers', async (ctx) => {
   const provs = await listProviders();
   if (!provs.length) {
-    return { text: '📭 الكتالوج فاضي حالياً.',
-             kb: kb().text('✖️ إغلاق', to('close')).build() };
+    return { text: t(ctx, 'shop.empty'),
+             kb: kb().text(t(ctx, 'btn.close'), to('close')).build() };
   }
 
   // عمودين افتراضياً، ومزوّد معلّم full_width بياخد سطر لحاله.
   //
   // ⚠️ التخطيط ما بيجي من الـ API — الوثائق §17 بتقول إن تخطيط
   // بوتهم قواعد داخلية عندهم. منضبطه من ⚙️ لوحة التحكم ← 🗂 المزوّدين.
+  // ⚠️ الترتيب مهم: منجمّع الأزرار العادية بأزواج، وأي زر بعرض
+  // كامل بيقطع الزوج. الخوارزمية القديمة كانت بتترك الزر السابق
+  // يتيم بسطره لما يجي بعده زر عريض — لهيك كان VPN لحاله بالصورة.
   const k = kb();
-  let col = 0;
+  let pair = [];
+  const flush = () => { if (pair.length) { pair.forEach((b) => k.add(b)); k.row(); pair = []; } };
+
   for (const p of provs) {
-    if (p.full_width && col === 1) { k.row(); col = 0; }
-    k.add({
+    const btn = {
       text: `${p.emoji || ''} ${provName(p)}`.trim(),
       data: to('plans', p.key, '1'),
       icon: p.custom_emoji_id || undefined,
-    });
-    col++;
-    if (p.full_width || col === 2) { k.row(); col = 0; }
+    };
+    if (p.full_width) { flush(); k.add(btn); k.row(); }
+    else { pair.push(btn); if (pair.length === 2) flush(); }
   }
-  k.row();
-  k.add({ text: '🟢 ماهو المتاح', data: to('avail', '1'), style: 'success' }).row();
-  k.text('✖️ إغلاق', to('close'));
+  flush();
+  k.add({ text: t(ctx, 'shop.available'), data: to('avail', '1'), style: 'success' }).row();
+  k.text(t(ctx, 'btn.close'), to('close'));
 
-  return { text: 'اختر الخدمة التي تريدها:', kb: k.build() };
+  return { text: t(ctx, 'shop.pick'), kb: k.build() };
 });
 
 // ---------- ماهو المتاح ----------
@@ -63,7 +67,7 @@ screen('avail', async (ctx, [pageStr]) => {
   if (!rows.length) {
     return {
       text: '🟢 <b>المتاح الآن</b>\n\n📭 ما في شي متوفّر هلق. جرّب بعد شوي.',
-      kb: kb().text('« الخدمات', to('providers')).build(),
+      kb: kb().text(t(ctx, 'btn.services'), to('providers')).build(),
     };
   }
 
@@ -85,7 +89,7 @@ screen('avail', async (ctx, [pageStr]) => {
 
   const k = kb();
   k.pager({ page, totalPages: pages, make: (n) => to('avail', String(n)) });
-  k.text('« الخدمات', to('providers'));
+  k.text(t(ctx, 'btn.services'), to('providers'));
 
   return {
     text: `🟢 <b>المتاح الآن</b> · ${rows.length} منتج\n${lines.join('\n')}`,
@@ -104,7 +108,7 @@ screen('plans', async (ctx, [providerKey, pageStr]) => {
   const head = `<b>اختر الخطة المطلوبة:</b>\n${RULE}`;
   if (!items.length) {
     return { text: `${head}\n📭 ما في خطط بهالقسم.`,
-             kb: kb().text('« رجوع', to('providers')).build() };
+             kb: kb().text(t(ctx, 'btn.back'), to('providers')).build() };
   }
 
   const showCount = Sbool('show_stock_count', true);
@@ -127,8 +131,8 @@ screen('plans', async (ctx, [providerKey, pageStr]) => {
 // ---------- صفحة المنتج ----------
 screen('item', async (ctx, [slug]) => {
   const p = await getProduct(slug);
-  if (!p || p.deleted_at) return { text: '❌ المنتج ما عاد متوفّر.',
-                   kb: kb().text('« رجوع', to('providers')).build() };
+  if (!p || p.deleted_at) return { text: t(ctx, 'shop.gone'),
+                   kb: kb().text(t(ctx, 'btn.back'), to('providers')).build() };
 
   const u     = await ensureUser(ctx.from);
   const price = finalPrice(p, u);
@@ -181,7 +185,7 @@ screen('item', async (ctx, [slug]) => {
 screen('confirm', async (ctx, [slug]) => {
   const [p, u] = await Promise.all([getProduct(slug), ensureUser(ctx.from)]);
   if (!p) return { text: '❌ المنتج غير موجود.',
-                   kb: kb().text('« رجوع', to('providers')).build() };
+                   kb: kb().text(t(ctx, 'btn.back'), to('providers')).build() };
 
   const price  = finalPrice(p, u);
   const enough = Number(u.balance) >= price;
