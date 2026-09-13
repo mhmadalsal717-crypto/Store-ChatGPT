@@ -15,25 +15,6 @@ import { basePrice } from './pricing.js';
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
-/**
- * فرز قيمة الإيموجي الجاية من GGSoma.
- *
- * المشكلة: لبعض المزوّدين بيرجع emoji.normal معرّف رقمي طويل
- * بدل إيموجي فعلي. الكود كان يحطه بنص الزر كما هو، فيطلع للزبون
- * زر مكتوب عليه «6318816857230942976 Heygen».
- *
- * منفرزها: رقم طويل = معرّف مخصص (مكانه icon مو النص)،
- * ASCII صرف أو نص طويل = مو إيموجي أبداً فمنرميه.
- */
-function splitEmoji(raw) {
-  const s = String(raw ?? '').trim();
-  if (!s) return { emoji: null, id: null };
-  if (/^\d{6,}$/.test(s)) return { emoji: null, id: s };        // معرّف انزلق مكان الإيموجي
-  if (!/[^\x00-\x7F]/.test(s)) return { emoji: null, id: null }; // حروف إنكليزية = مو إيموجي
-  if ([...s].length > 8) return { emoji: null, id: null };       // نص طويل = مو إيموجي
-  return { emoji: s, id: null };
-}
-
 export async function syncCatalog() {
   const globalMarkup = Snum('markup_pct', 40);
 
@@ -45,18 +26,15 @@ export async function syncCatalog() {
   const pOld = Object.fromEntries((oldProv || []).map((r) => [r.key, r]));
 
   if (providers.length) {
-    await db.from('providers').upsert(providers.map((p) => {
-      const e = splitEmoji(p.emoji?.normal);
-      return {
+    await db.from('providers').upsert(providers.map((p) => ({
       key: p.key,
       name: p.name,
-      emoji: e.emoji,
-      custom_emoji_id: pOld[p.key]?.custom_emoji_id ?? p.emoji?.customTelegramId ?? e.id ?? null,
+      emoji: p.emoji?.normal || null,
+      custom_emoji_id: pOld[p.key]?.custom_emoji_id ?? p.emoji?.customTelegramId ?? null,
       sort_order: p.sortOrder ?? 100,
       visible: pOld[p.key]?.visible ?? true,
       updated_at: new Date().toISOString(),
-      };
-    }), { onConflict: 'key' });
+    })), { onConflict: 'key' });
 
     const liveKeys = new Set(providers.map((p) => p.key));
     const goneP = (oldProv || []).filter((r) => !liveKeys.has(r.key)).map((r) => r.key);
@@ -82,7 +60,6 @@ export async function syncCatalog() {
     const stock = p.stock?.count ?? 0;
     const inStock = !!p.stock?.inStock;
     const mk = o?.markup_pct ?? globalMarkup;
-    const pe = splitEmoji(p.emoji?.normal);
 
     // كشف التغيّر بالمخزون
     //
@@ -125,8 +102,8 @@ export async function syncCatalog() {
       product_code: p.productCode || null,
       name: p.name,
       provider_key: p.provider?.key || null,
-      emoji: pe.emoji,
-      custom_emoji_id: o?.custom_emoji_id ?? p.emoji?.customTelegramId ?? pe.id ?? null,
+      emoji: p.emoji?.normal || null,
+      custom_emoji_id: o?.custom_emoji_id ?? p.emoji?.customTelegramId ?? null,
       delivery_type: p.deliveryType,
       cost_price: Number(p.yourPrice),
       catalog_price: p.catalogPrice != null ? Number(p.catalogPrice) : null,
@@ -284,8 +261,18 @@ async function pullDetailsBatch(live) {
 
 // ---------- قراءات ----------
 export async function listProviders() {
+  // الترتيب الثاني بالاسم مقصود: sortOrder عندهم بيتكرّر كتير،
+  // وبدون فاصل حاسم بيتبدّل ترتيب الأزرار كل مزامنة والزبون بيتوه.
   const { data } = await db.from('providers')
-    .select('*').eq('visible', true).order('sort_order');
+    .select('*').eq('visible', true)
+    .order('sort_order').order('name');
+  return data || [];
+}
+
+/** كل المزوّدين بما فيهم المخفيين — للوحة التحكم */
+export async function listAllProviders() {
+  const { data } = await db.from('providers')
+    .select('*').order('sort_order').order('name');
   return data || [];
 }
 
