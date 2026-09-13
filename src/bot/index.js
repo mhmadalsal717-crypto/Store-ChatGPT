@@ -6,11 +6,12 @@ import { cfg, isAdmin } from '../config.js';
 import { db, rpc, ensureUser } from '../lib/db.js';
 import { loadAll, Sbool, Snum, E, T } from '../lib/settings.js';
 import { esc, money, RULE } from '../lib/fmt.js';
-import { go, to, withLoading } from './nav.js';
+import { go, to, withLoading, screen } from './nav.js';
 import { kb } from './kb.js';
 import { MENU, mainMenu } from './menu.js';
 import { t, welcomeText, DEFAULT_LANG } from '../lib/i18n.js';
 import { clear } from './input.js';
+import { isJoined } from './onboarding.js';   // الاستيراد بيسجّل شاشات البوابة
 import { purchase } from '../core/purchase.js';
 import { renderDelivery } from './delivery.js';
 import { handleInput } from './handlers.js';
@@ -56,9 +57,22 @@ bot.use(async (ctx, next) => {
   ctx.lang = u?.lang || DEFAULT_LANG;
 
   if (u?.banned) {
-    if (ctx.callbackQuery) await ctx.answerCallbackQuery({ text: '🚫 حسابك محظور.', show_alert: true });
+    if (ctx.callbackQuery) await ctx.answerCallbackQuery({ text: t(ctx, 'sys.banned'), show_alert: true });
     return;
   }
+
+  // ---------- بوابة الدخول ----------
+  // الأدمن معفى. شاشات البوابة نفسها معفاة وإلا بتصير حلقة مقفلة.
+  const data = ctx.callbackQuery?.data || '';
+  const inGate = data.startsWith('n:ob_');
+
+  if (!isAdmin(ctx.from.id) && !inGate) {
+    if (!u?.lang_set) { await go(ctx, 'ob_lang', [], { forceNew: true }); return; }
+    if (!(await isJoined(ctx.api, ctx.from.id))) {
+      await go(ctx, 'ob_join', [], { forceNew: true }); return;
+    }
+  }
+
   return next();
 });
 
@@ -84,12 +98,21 @@ bot.command('start', async (ctx) => {
     }
   }
 
-  // الترحيب + الكيبورد الثابت بنفس الرسالة
   await ctx.reply(welcomeText(ctx.lang), {
     parse_mode: 'HTML',
     link_preview_options: { is_disabled: true },
     reply_markup: homeKb(ctx.from.id, ctx.lang),
   });
+});
+
+// ---------- نهاية البوابة: الترحيب + الكيبورد ----------
+screen('ob_done', async (ctx) => {
+  await ctx.reply(welcomeText(ctx.lang), {
+    parse_mode: 'HTML',
+    link_preview_options: { is_disabled: true },
+    reply_markup: homeKb(ctx.from.id, ctx.lang),
+  }).catch(() => {});
+  return { text: '✅', kb: kb().build() };
 });
 
 // ---------- أزرار الكيبورد الثابت ----------
