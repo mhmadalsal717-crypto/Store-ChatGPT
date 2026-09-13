@@ -11,6 +11,15 @@ export const screen = (name, fn) => screens.set(name, fn);
 export const to = (name, ...args) => ['n', name, ...args].join(':');
 
 export async function go(ctx, name, args = [], { forceNew = false } = {}) {
+  // «إغلاق» — بيمسح الرسالة بدل ما يرجّع للرئيسية.
+  // صار ممكن بس بعد ما نقلنا القائمة لكيبورد ثابت: المستخدم
+  // ما بيضيع لأن القائمة دايماً تحت إيده.
+  if (name === 'close') {
+    try { await ctx.deleteMessage(); }
+    catch { await ctx.editMessageText('✔️').catch(() => {}); }
+    return;
+  }
+
   const fn = screens.get(name);
   if (!fn) throw new Error('شاشة غير معروفة: ' + name);
 
