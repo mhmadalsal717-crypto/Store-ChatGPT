@@ -11,7 +11,7 @@ import { kb } from './kb.js';
 import { MENU, mainMenu } from './menu.js';
 import { t, welcomeText, DEFAULT_LANG } from '../lib/i18n.js';
 import { clear } from './input.js';
-import { isJoined } from './onboarding.js';   // الاستيراد بيسجّل شاشات البوابة
+import { STEP_DONE, applyReferral } from './onboarding.js';   // الاستيراد بيسجّل شاشات البوابة
 import { purchase } from '../core/purchase.js';
 import { renderDelivery } from './delivery.js';
 import { handleInput } from './handlers.js';
@@ -51,32 +51,39 @@ bot.use(async (ctx, next) => {
     return;
   }
 
-  // لغة المستخدم بتنقرأ هون مرة وحدة — كل الشاشات بتستعمل ctx.lang
+  // لغة المستخدم وخطوة البوابة — قراءة وحدة لكل تحديث
   //
-  // ⚠️ لو عمود lang_set ناقص (10_onboarding.sql ما انشغّل) الاستعلام
-  // بيفشل كامل. وقتها منعتبر البوابة مكمّلة بدل ما نحبس كل الزبائن
-  // بشاشة اللغة للأبد.
-  const { data: u, error: uErr } = await db.from('users')
-    .select('banned, lang, lang_set').eq('tg_id', ctx.from.id).maybeSingle();
-  if (uErr) console.error('[guard] قراءة المستخدم فشلت:', uErr.message);
+  // ⚠️ لو عمود onboard_step ناقص (10_onboarding.sql ما انشغّل)
+  // الاستعلام بيفشل كامل. وقتها منعتبر البوابة مكمّلة بدل ما
+  // نحبس كل الزبائن بشاشة اللغة للأبد.
+  // ensureUser مو select: المستخدم الجديد ما إله صف بعد، وبالـ
+  // select كان بيرجع null فتنعتبر بوابته مكمّلة وتنفتح له كل شي.
+  let u = null;
+  try { u = await ensureUser(ctx.from); }
+  catch (e) { console.error('[guard] ensureUser فشل:', e.message); }
+
   ctx.lang = u?.lang || DEFAULT_LANG;
-  const gateReady = !uErr;
+
+  // العمود ناقص (10_onboarding.sql ما انشغّل) = undefined = تخطّي
+  // البوابة، بدل ما نحبس كل الزبائن بشاشة اللغة للأبد.
+  const step = u?.onboard_step ?? STEP_DONE;
 
   if (u?.banned) {
     if (ctx.callbackQuery) await ctx.answerCallbackQuery({ text: t(ctx, 'sys.banned'), show_alert: true });
     return;
   }
 
-  // ---------- بوابة الدخول ----------
-  // الأدمن معفى. شاشات البوابة نفسها معفاة وإلا بتصير حلقة مقفلة.
-  const data = ctx.callbackQuery?.data || '';
-  const inGate = data.startsWith('n:ob_');
+  // ---------- البوابة ----------
+  // شاشات البوابة معفاة وإلا بتصير حلقة مقفلة. الأدمن معفي كمان.
+  const inGate = (ctx.callbackQuery?.data || '').startsWith('n:ob_');
 
-  if (gateReady && !isAdmin(ctx.from.id) && !inGate) {
-    if (!u?.lang_set) { await go(ctx, 'ob_lang', [], { forceNew: true }); return; }
-    if (!(await isJoined(ctx.api, ctx.from.id))) {
-      await go(ctx, 'ob_join', [], { forceNew: true }); return;
-    }
+  if (step < STEP_DONE && !isAdmin(ctx.from.id) && !inGate) {
+    // الإحالة لازم تنسجّل قبل ما نوقفه — معالج /start ما رح يوصله
+    const m = /^\/start\s+(\S+)/.exec(ctx.message?.text || '');
+    if (m) await applyReferral(ctx, bot.api, m[1]).catch(() => {});
+
+    await go(ctx, step === 0 ? 'ob_lang' : 'ob_join', [], { forceNew: true });
+    return;
   }
 
   return next();
