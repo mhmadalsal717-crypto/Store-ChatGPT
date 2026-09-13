@@ -64,7 +64,28 @@ export class GGError extends Error {
   get available() { return this.extra?.balance; }
 }
 
-async function request(method, path, { body, auth = true, timeoutMs = 25000 } = {}) {
+const napFor = (ms) => new Promise((r) => setTimeout(r, ms));
+
+/**
+ * §15 بالوثائق: «Exponential backoff on 429».
+ * منعيد المحاولة داخلياً لحد retries مرات مع مضاعفة الانتظار.
+ * آمن لأن كل نداءاتنا إما قراءة، أو POST بـ externalOrderId ثابت
+ * (idempotent حسب §11) — فالإعادة ما بتخصم مرتين.
+ */
+async function request(method, path, opts = {}) {
+  const retries = opts.retries ?? 2;
+  for (let i = 0; ; i++) {
+    try {
+      return await rawRequest(method, path, opts);
+    } catch (e) {
+      const worthRetry = e.code === 'RATE_LIMIT_EXCEEDED' || e.code === 'NETWORK_ERROR';
+      if (!worthRetry || i >= retries) throw e;
+      await napFor(1500 * 2 ** i);   // 1.5ث ثم 3ث
+    }
+  }
+}
+
+async function rawRequest(method, path, { body, auth = true, timeoutMs = 25000 } = {}) {
   const ctrl = new AbortController();
   const t = setTimeout(() => ctrl.abort(), timeoutMs);
   let res;
