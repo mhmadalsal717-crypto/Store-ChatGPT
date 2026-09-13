@@ -29,17 +29,28 @@ screen('providers', async () => {
              kb: kb().text('✖️ إغلاق', to('close')).build() };
   }
 
-  // عمودين متل GGSoma. الإيموجي المخصص بينضاف تلقائياً لو
-  // فعّلت «إيموجي بريميوم» من ⚙️ لوحة التحكم ← المظهر.
-  const k = kb().grid(provs, {
-    cols: 2,
-    label: (p) => `${p.emoji || ''} ${p.name}`.trim(),
-    data:  (p) => to('plans', p.key, '1'),
-    icon:  (p) => p.custom_emoji_id || undefined,
-  });
+  // عمودين افتراضياً، ومزوّد معلّم full_width بياخد سطر لحاله —
+  // نفس أسلوب GGSoma بـ «اشتراكات رسمية» و«Gemini».
+  //
+  // ⚠️ هالتخطيط ما بيجي من الـ API. الوثائق §17 صريحة إنو ترتيب
+  // وتخطيط بوتهم قواعد داخلية عندهم مو مكشوفة. فمنضبطه يدوياً من
+  // ⚙️ لوحة التحكم ← 🗂 المزوّدين.
+  const k = kb();
+  let col = 0;
+  for (const p of provs) {
+    if (p.full_width && col === 1) { k.row(); col = 0; }
+    k.add({
+      text: `${p.emoji || ''} ${p.name}`.trim(),
+      data: to('plans', p.key, '1'),
+      icon: p.custom_emoji_id || undefined,
+    });
+    col++;
+    if (p.full_width || col === 2) { k.row(); col = 0; }
+  }
+  k.row();
   k.text('✖️ إغلاق', to('close'));
 
-  return { text: `${E('shop')} <b>المنتجات</b>\n\nاختر الخدمة:`, kb: k.build() };
+  return { text: 'اختر الخدمة التي تريدها:', kb: k.build() };
 });
 
 screen('plans', async (ctx, [providerKey, pageStr]) => {
@@ -50,39 +61,30 @@ screen('plans', async (ctx, [providerKey, pageStr]) => {
   const items = all.slice((page - 1) * per, page * per);
   const u     = await ensureUser(ctx.from);
 
-  const prov = (await listProviders()).find((x) => x.key === providerKey);
-  const pemo = prov?.emoji || '';
-  const head = `${pemo} اختر خطة <b>${esc(prov?.name || '')}</b> التي تريد تفعيلها:`.trim();
-
+  const head = `<b>اختر الخطة المطلوبة:</b>\n${RULE}`;
   if (!items.length) {
-    return { text: `${head}\n\n📭 ما في خطط متاحة بهالقسم.`,
-             kb: kb().text('« الخدمات', to('providers')).build() };
+    return { text: `${head}\n📭 ما في خطط بهالقسم.`,
+             kb: kb().text('« رجوع', to('providers')).build() };
   }
 
-  // نفس شكل GGSoma: زر بعرض كامل لكل خطة، أخضر متوفّر وأحمر نافد،
-  // والعدد بين قوسين. السعر مخفي افتراضياً متلهم — فيك تظهره من
-  // ⚙️ لوحة التحكم ← المظهر ← «السعر على أزرار الخطط».
   const showCount = Sbool('show_stock_count', true);
-  const showPrice = Sbool('show_plan_price', false);
-
   const k = kb();
   for (const p of items) {
-    const n     = Number(p.stock_count || 0);
-    const count = showCount ? ` (${!p.in_stock ? 0 : n >= 9999 ? '∞' : n})` : '';
-    const price = showPrice ? ` · ${money(finalPrice(p, u))}` : '';
+    const count = showCount ? ` (${p.stock_count || 0})` : '';
     k.add({
-      text:  `${p.emoji || ''} ${p.name}${price}${count}`.trim(),
+      text:  `${p.emoji || ''} ${p.name} · ${money(finalPrice(p, u))}${count}`.trim(),
       data:  to('item', p.slug),
       style: stockStyle(p),
       icon:  p.custom_emoji_id || undefined,
     }).row();
   }
   k.pager({ page, totalPages: pages, make: (n) => to('plans', providerKey, String(n)) });
-  k.text('« الخدمات', to('providers'));
+  k.text('« رجوع للخدمات', to('providers'));
 
   return { text: head, kb: k.build() };
 });
 
+// ---------- صفحة المنتج ----------
 screen('item', async (ctx, [slug]) => {
   const p = await getProduct(slug);
   if (!p || p.deleted_at) return { text: '❌ المنتج ما عاد متوفّر.',
