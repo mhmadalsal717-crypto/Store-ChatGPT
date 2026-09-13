@@ -12,9 +12,25 @@ import { screen, to } from './nav.js';
 import { kb } from './kb.js';
 import { db } from '../lib/db.js';
 import { T, Sbool } from '../lib/settings.js';
-import { t, LANGS, setLang } from '../lib/i18n.js';
+import { t, LANGS, setLang, welcomeText } from '../lib/i18n.js';
+import { mainMenu } from './menu.js';
 
 const OK = ['member', 'administrator', 'creator'];
+
+/**
+ * إنهاء البوابة: امسح رسالة البوابة وابعت الترحيب مع الكيبورد.
+ *
+ * ليش رسالة جديدة مو تعديل؟ لأن الكيبورد الثابت (ReplyKeyboard)
+ * ما بينضاف بتعديل رسالة قديمة — تلغرام بيقبله بالإرسال بس.
+ */
+async function welcomeAndMenu(ctx) {
+  await ctx.deleteMessage().catch(() => {});
+  await ctx.reply(welcomeText(ctx.lang), {
+    parse_mode: 'HTML',
+    link_preview_options: { is_disabled: true },
+    reply_markup: mainMenu(ctx.from.id, ctx.lang),
+  }).catch(() => {});
+}
 
 /** القنوات المطلوبة: [{ id, url, labelKey }] — بس المضبوطة منها */
 export function requiredChats() {
@@ -58,12 +74,20 @@ screen('ob_lang', async () => ({
 
 screen('ob_set', async (ctx, [code]) => {
   const lang = await setLang(ctx.from.id, LANGS.includes(code) ? code : 'ar');
-  await db.from('users').update({ lang_set: true }).eq('tg_id', ctx.from.id);
   ctx.lang = lang;
 
-  // مشترك أصلاً؟ فوّته على طول
-  if (await isJoined(ctx.api, ctx.from.id)) return { goto: 'ob_done' };
-  return { goto: 'ob_join' };
+  // ⚠️ لازم نتأكد إن الحفظ نجح فعلاً. لو عمود lang_set ناقص
+  // (يعني 10_onboarding.sql ما انشغّل)، الحفظ بيفشل بصمت
+  // والحارس بيرجّع المستخدم لشاشة اللغة كل مرة — حلقة مقفلة.
+  const { error } = await db.from('users')
+    .update({ lang_set: true }).eq('tg_id', ctx.from.id);
+  if (error) console.error('[onboarding] فشل حفظ lang_set:', error.message);
+
+  // لسه ما اشترك؟ كمّل للبوابة بتعديل نفس الرسالة
+  if (!(await isJoined(ctx.api, ctx.from.id))) return { goto: 'ob_join' };
+
+  await welcomeAndMenu(ctx);
+  return null;   // ما ترسم شي — welcomeAndMenu تصرّفت
 });
 
 // ============================================================
@@ -79,7 +103,10 @@ screen('ob_join', async (ctx) => {
 });
 
 screen('ob_check', async (ctx) => {
-  if (await isJoined(ctx.api, ctx.from.id)) return { goto: 'ob_done' };
+  if (await isJoined(ctx.api, ctx.from.id)) {
+    await welcomeAndMenu(ctx);
+    return null;
+  }
 
   // لسه ما اشترك — نبّهه بدون ما نبدّل الشاشة
   await ctx.answerCallbackQuery?.({ text: t(ctx, 'join.missing'), show_alert: true })
