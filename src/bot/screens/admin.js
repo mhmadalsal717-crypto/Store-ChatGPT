@@ -712,7 +712,7 @@ screen('a_provs', async (ctx) => {
   for (const p of provs) {
     const eye = p.visible ? '👁' : '🙈';
     const w   = p.full_width ? '▬' : '▪';
-    k.text(`${eye}${w} ${p.emoji || '·'} ${p.name}`, to('a_prov', p.key)).row();
+    k.text(`${eye}${w} ${p.emoji || '·'} ${p.name_override || p.name}`, to('a_prov', p.key)).row();
   }
   k.text('« رجوع', to('admin'));
 
@@ -732,7 +732,9 @@ screen('a_prov', async (ctx, [key]) => {
                    kb: kb().text('« رجوع', to('a_provs')).build() };
 
   return {
-    text: `🗂 <b>${esc(p.name)}</b>\n${RULE}\n` +
+    text: `🗂 <b>${esc(p.name_override || p.name)}</b>\n${RULE}\n` +
+          `🔤 اسم GGSoma: <code>${esc(p.name)}</code>\n` +
+          `✏️ الاسم المعروض: ${p.name_override ? esc(p.name_override) : '— نفس الأصلي'}\n` +
           `😀 الإيموجي: ${p.emoji || '— ما في'}\n` +
           `🔢 الترتيب: <b>${p.sort_order ?? 100}</b>\n` +
           `👁 الظهور: <b>${p.visible ? 'ظاهر' : 'مخفي'}</b>\n` +
@@ -741,6 +743,7 @@ screen('a_prov', async (ctx, [key]) => {
             ? `\n⭐ إيموجي مخصص محفوظ — بيظهر بس لو فعّلت «إيموجي بريميوم».`
             : ''),
     kb: kb()
+      .text('✏️ غيّر الاسم', to('a_pvset', key, 'name')).row()
       .text('😀 غيّر الإيموجي', to('a_pvset', key, 'emoji')).row()
       .text('🔢 غيّر الترتيب', to('a_pvset', key, 'order')).row()
       .text(p.visible ? '🙈 إخفاء' : '👁 إظهار', to('a_pvtog', key, 'visible'))
@@ -764,6 +767,10 @@ screen('a_pvset', async (ctx, [key, field]) => {
   return {
     text: field === 'emoji'
       ? `😀 أرسل الإيموجي الجديد (إيموجي واحد).\nأرسل <code>-</code> لحذفه.`
+      : field === 'name'
+      ? `✏️ أرسل الاسم المعروض، مثل <code>يوتيوب</code>.\n` +
+        `أرسل <code>-</code> للرجوع لاسم GGSoma الأصلي.\n\n` +
+        `<i>الاسم الأصلي بيضل محفوظ — المزامنة ما بتدهس تعديلك.</i>`
       : `🔢 أرسل رقم الترتيب.\nالأصغر بيطلع أول. مثال: <code>10</code>`,
     kb: kb().text('« إلغاء', to('a_prov', key)).build(),
   };
