@@ -24,6 +24,13 @@ export async function go(ctx, name, args = [], { forceNew = false } = {}) {
   if (!fn) throw new Error('شاشة غير معروفة: ' + name);
 
   const view = await fn(ctx, args);
+
+  // شاشة بترجّع { goto } = تحويل لشاشة تانية بدون ما ترسم شي.
+  // مفيدة بسلاسل مثل بوابة الدخول: اللغة ← الاشتراك ← الترحيب.
+  // الحد الأقصى للتحويلات محسوب ضمنياً: كل goto بيستدعي go من
+  // جديد، فسلسلة مغلقة رح تفجّر المكدّس — لهيك احرص ما تعمل حلقة.
+  if (view?.goto) return go(ctx, view.goto, view.args || [], { forceNew });
+
   const opts = {
     parse_mode: 'HTML',
     link_preview_options: { is_disabled: true },
