@@ -1,101 +1,90 @@
 // ============================================================
-//  اللغات — عربي / إنكليزي
-//
-//  لغة كل مستخدم محفوظة بعمود users.lang، ومنقرأها مرة وحدة
-//  بالحارس العام ومنحطها على ctx.lang. الشاشات بتستعملها
-//  مباشرة بدون أي نداء إضافي لقاعدة البيانات.
-//
-//  إضافة نص جديد: حطّه بالقاموسين. لو نسيت الإنكليزي،
-//  بيرجع العربي تلقائياً بدل ما ينكسر شي.
+//  العربية — كل نص يشوفه الزبون
+//  المفاتيح مرتّبة حسب الشاشة. شوف README.md بنفس المجلد.
 // ============================================================
-import { db } from './db.js';
-import { T } from './settings.js';
+export default {
 
-export const LANGS = ['ar', 'en'];
-export const DEFAULT_LANG = 'ar';
+  // ---------- القائمة الثابتة ----------
+  'menu.products': '🛒 المنتجات',
+  'menu.profile':  '👤 ملفي',
+  'menu.invites':  '🎁 الدعوات',
+  'menu.voucher':  '💳 شحن بكود',
+  'menu.topup':    '💰 شحن رصيد',
+  'menu.help':     '❓ المساعدة',
+  'menu.policy':   '🛡 سياسة البوت',
+  'menu.admin':    '⚙️ لوحة التحكم',
 
-// ============================================================
-//  القاموس
-// ============================================================
-const DICT = {
-  ar: {
-    // ---- أزرار القائمة الرئيسية ----
-    'menu.products': '🛒 المنتجات',
-    'menu.profile':  '👤 ملفي',
-    'menu.invites':  '🎁 الدعوات',
-    'menu.voucher':  '💳 شحن بكود',
-    'menu.topup':    '💰 شحن رصيد',
-    'menu.help':     '❓ المساعدة',
-    'menu.policy':   '🛡 سياسة البوت',
-    'menu.admin':    '⚙️ لوحة التحكم',
+  // ---------- أزرار عامة ----------
+  'btn.close':     '✖️ إغلاق',
+  'btn.back':      '« رجوع',
+  'btn.services':  '« الخدمات',
+  'btn.plans':     '« رجوع للخطط',
+  'btn.prev':      '‹ السابق',
+  'btn.next':      'التالي ›',
+  'btn.cancel':    '« إلغاء',
 
-    // ---- شاشة اللغة ----
-    'lang.title':    '🌐 <b>اللغة</b>',
-    'lang.pick':     'اختر لغة البوت:',
-    'lang.current':  'اللغة الحالية: <b>العربية</b>',
-    'lang.done':     '✅ تم تغيير اللغة إلى العربية.',
-    'lang.ar':       '🇸🇦 العربية',
-    'lang.en':       '🇬🇧 English',
+  // ---------- المتجر ----------
+  'shop.pick':      'اختر الخدمة التي تريدها:',
+  'shop.empty':     '📭 الكتالوج فاضي حالياً.',
+  'shop.available': '🟢 ماهو المتاح',
+  'shop.plans':     '{emoji} اختر خطة <b>{provider}</b> التي تريد تفعيلها:',
+  'shop.noPlans':   '📭 ما في خطط متاحة بهالقسم.',
+  'shop.gone':      '❌ المنتج ما عاد متوفّر.',
 
-    // ---- أوامر البوت ----
-    'cmd.start':     'القائمة الرئيسية',
-    'cmd.menu':      'فتح القائمة',
-    'cmd.lang':      'تغيير اللغة · Change language',
+  'shop.avail.title': '🟢 <b>المتاح الآن</b> · {count} منتج',
+  'shop.avail.none':  '🟢 <b>المتاح الآن</b>\n\n📭 ما في شي متوفّر هلق. جرّب بعد شوي.',
 
-    // ---- عام ----
-    'common.back':   '« رجوع',
-    'common.home':   '« الرئيسية',
-  },
+  // ---------- صفحة المنتج ----------
+  'item.duration':  '⏳ المدة: <b>{days}</b> يوم',
+  'item.warranty':  '🛡 الضمان: <b>{days}</b> يوم',
+  'item.delivery':  '📥 التسليم: {type} · فوري',
+  'item.instr':     'التعليمات المهمة',
+  'item.buy':       '🛒 شراء',
+  'item.inStock':   '🟢 متوفّر',
+  'item.low':       '🟡 متبقّي {n} فقط',
+  'item.out':       '🔴 غير متوفّر حالياً',
 
-  en: {
-    // ---- Main menu buttons ----
-    'menu.products': '🛒 Products',
-    'menu.profile':  '👤 My Profile',
-    'menu.invites':  '🎁 Referrals',
-    'menu.voucher':  '💳 Redeem Code',
-    'menu.topup':    '💰 Add Funds',
-    'menu.help':     '❓ Support',
-    'menu.policy':   '🛡 Bot Policy',
-    'menu.admin':    '⚙️ Admin Panel',
+  // ---------- تأكيد الشراء ----------
+  'confirm.title':  '🧾 <b>تأكيد الشراء</b>',
+  'confirm.price':  '💵 السعر: <b>{price}</b>',
+  'confirm.after':  '💰 رصيدك بعد الشراء: <b>{balance}</b>',
+  'confirm.short':  '❌ رصيدك ما بيكفي. ناقصك <b>{missing}</b>.',
+  'confirm.yes':    '✅ أكّد الشراء',
+  'confirm.topup':  '💰 اشحن رصيد',
 
-    // ---- Language screen ----
-    'lang.title':    '🌐 <b>Language</b>',
-    'lang.pick':     'Choose your language:',
-    'lang.current':  'Current language: <b>English</b>',
-    'lang.done':     '✅ Language changed to English.',
-    'lang.ar':       '🇸🇦 العربية',
-    'lang.en':       '🇬🇧 English',
+  // ---------- نتيجة الطلب ----------
+  'order.working':  '⏳ عم ننفّذ طلبك…',
+  'order.done':     '✅ <b>تم الشراء</b>',
+  'order.pending':  '⏳ <b>طلبك قيد التنفيذ</b>\nرح يوصلك أول ما يخلص. ما في داعي تعيد الطلب.',
+  'order.failed':   '❌ <b>ما نجح الطلب</b>\n{reason}',
+  'order.refunded': '↩️ رجّعنالك <b>{amount}</b> لمحفظتك.',
+  'order.maint':    'الخدمة بصيانة مؤقتة عند المزوّد. جرّب بعد شوي — ما انخصم منك شي.',
+  'order.noStock':  'المنتج نفد من المخزون.',
+  'order.paused':   'البيع موقوف مؤقتاً على هالمنتج.',
+  'order.badQty':   'الكمية غير صالحة.',
 
-    // ---- Bot commands ----
-    'cmd.start':     'Main menu',
-    'cmd.menu':      'Open menu',
-    'cmd.lang':      'Change language · تغيير اللغة',
+  // ---------- التسليم ----------
+  'deliv.link':     '🔗 رابط التفعيل',
+  'deliv.code':     '🎟 الكود',
+  'deliv.account':  '🔐 بيانات الحساب',
+  'deliv.warn':     '⚠️ احتفظ فيها بمكان آمن — ما منقدر نعرضها مرة تانية.',
 
-    // ---- Common ----
-    'common.back':   '« Back',
-    'common.home':   '« Home',
-  },
+  // ---------- عام ----------
+  'sys.maintenance': '🛠 البوت تحت الصيانة حالياً. جرّب بعد شوي.',
+  'sys.banned':      '🚫 حسابك محظور.',
+  'sys.error':       '⚠️ صار خلل. جرّب مرة تانية.',
+  'sys.loading':     '⏳ لحظة…',
+
+  // ---------- اللغة ----------
+  'lang.title':    '🌐 <b>اللغة</b>',
+  'lang.pick':     'اختر لغة البوت:',
+  'lang.current':  'اللغة الحالية: <b>العربية</b>',
+  'lang.done':     '✅ تم تغيير اللغة إلى العربية.',
+  'lang.ar':       '🇸🇦 العربية',
+  'lang.en':       '🇬🇧 English',
+
+  // ---------- الأوامر ----------
+  'cmd.start':     'القائمة الرئيسية',
+  'cmd.menu':      'فتح القائمة',
+  'cmd.lang':      'تغيير اللغة · Change language',
 };
-
-/** جلب نص. لو ناقص بالإنكليزي بيرجع العربي، ولو ناقص بالتنين بيرجع المفتاح. */
-export const t = (lang, key) =>
-  DICT[lang]?.[key] ?? DICT[DEFAULT_LANG][key] ?? key;
-
-/** كل النصوص لمفتاح معيّن بكل اللغات — مستعملة ببناء جدول التوجيه */
-export const allOf = (key) => LANGS.map((l) => t(l, key));
-
-/**
- * نص الترحيب. محفوظ بجدول texts مفتاحين منفصلين
- * حتى تقدر تعدّله من لوحة التحكم بدون لمس الكود.
- */
-export const welcomeText = (lang) =>
-  lang === 'en'
-    ? T('welcome_en', '<blockquote>👋 Welcome!</blockquote>')
-    : T('welcome',    '<blockquote>👋 مرحبًا بك!</blockquote>');
-
-/** حفظ لغة المستخدم */
-export async function setLang(tgId, lang) {
-  const v = LANGS.includes(lang) ? lang : DEFAULT_LANG;
-  await db.from('users').update({ lang: v }).eq('tg_id', tgId);
-  return v;
-}
