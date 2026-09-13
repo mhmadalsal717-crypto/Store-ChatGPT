@@ -26,22 +26,22 @@ screen('providers', async () => {
   const provs = await listProviders();
   if (!provs.length) {
     return { text: '📭 الكتالوج فاضي حالياً.',
-             kb: kb().text('« الرئيسية', to('home')).build() };
+             kb: kb().text('✖️ إغلاق', to('close')).build() };
   }
 
+  // عمودين متل GGSoma. الإيموجي المخصص بينضاف تلقائياً لو
+  // فعّلت «إيموجي بريميوم» من ⚙️ لوحة التحكم ← المظهر.
   const k = kb().grid(provs, {
     cols: 2,
-    label: (p) => `${p.emoji || '▫️'} ${p.name}`,
+    label: (p) => `${p.emoji || ''} ${p.name}`.trim(),
     data:  (p) => to('plans', p.key, '1'),
     icon:  (p) => p.custom_emoji_id || undefined,
   });
-  k.text('« الرئيسية', to('home'));
+  k.text('✖️ إغلاق', to('close'));
 
-  return { text: `${E('shop')} <b>المنتجات</b>\n${RULE}\nاختر الخدمة يلي بدك ياها:`,
-           kb: k.build() };
+  return { text: `${E('shop')} <b>المنتجات</b>\n\nاختر الخدمة:`, kb: k.build() };
 });
 
-// ---------- الخطط داخل مزوّد ----------
 screen('plans', async (ctx, [providerKey, pageStr]) => {
   const per   = Snum('products_per_page', 8);
   const page  = Math.max(1, Number(pageStr || 1));
@@ -50,30 +50,39 @@ screen('plans', async (ctx, [providerKey, pageStr]) => {
   const items = all.slice((page - 1) * per, page * per);
   const u     = await ensureUser(ctx.from);
 
-  const head = `<b>اختر الخطة المطلوبة:</b>\n${RULE}`;
+  const prov = (await listProviders()).find((x) => x.key === providerKey);
+  const pemo = prov?.emoji || '';
+  const head = `${pemo} اختر خطة <b>${esc(prov?.name || '')}</b> التي تريد تفعيلها:`.trim();
+
   if (!items.length) {
-    return { text: `${head}\n📭 ما في خطط بهالقسم.`,
-             kb: kb().text('« رجوع', to('providers')).build() };
+    return { text: `${head}\n\n📭 ما في خطط متاحة بهالقسم.`,
+             kb: kb().text('« الخدمات', to('providers')).build() };
   }
 
+  // نفس شكل GGSoma: زر بعرض كامل لكل خطة، أخضر متوفّر وأحمر نافد،
+  // والعدد بين قوسين. السعر مخفي افتراضياً متلهم — فيك تظهره من
+  // ⚙️ لوحة التحكم ← المظهر ← «السعر على أزرار الخطط».
   const showCount = Sbool('show_stock_count', true);
+  const showPrice = Sbool('show_plan_price', false);
+
   const k = kb();
   for (const p of items) {
-    const count = showCount ? ` (${p.stock_count || 0})` : '';
+    const n     = Number(p.stock_count || 0);
+    const count = showCount ? ` (${!p.in_stock ? 0 : n >= 9999 ? '∞' : n})` : '';
+    const price = showPrice ? ` · ${money(finalPrice(p, u))}` : '';
     k.add({
-      text:  `${p.emoji || ''} ${p.name} · ${money(finalPrice(p, u))}${count}`.trim(),
+      text:  `${p.emoji || ''} ${p.name}${price}${count}`.trim(),
       data:  to('item', p.slug),
       style: stockStyle(p),
       icon:  p.custom_emoji_id || undefined,
     }).row();
   }
   k.pager({ page, totalPages: pages, make: (n) => to('plans', providerKey, String(n)) });
-  k.text('« رجوع للخدمات', to('providers'));
+  k.text('« الخدمات', to('providers'));
 
   return { text: head, kb: k.build() };
 });
 
-// ---------- صفحة المنتج ----------
 screen('item', async (ctx, [slug]) => {
   const p = await getProduct(slug);
   if (!p || p.deleted_at) return { text: '❌ المنتج ما عاد متوفّر.',
