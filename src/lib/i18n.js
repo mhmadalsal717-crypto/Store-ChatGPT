@@ -1,90 +1,61 @@
 // ============================================================
-//  العربية — كل نص يشوفه الزبون
-//  المفاتيح مرتّبة حسب الشاشة. شوف README.md بنفس المجلد.
+//  محرّك اللغات
+//
+//  النصوص نفسها بمجلد src/lang — ما في ولا نص هون.
+//  هالملف بس بيوصّل: يجيب اللغة، يعبّي المتغيّرات، يحفظ الاختيار.
+//
+//  الاستعمال بالشاشات:
+//      t(ctx, 'shop.pick')
+//      t(ctx, 'item.low', { n: 3 })
+//
+//  ctx.lang بينتحدّد مرة وحدة بالحارس العام (bot/index.js).
 // ============================================================
-export default {
+import { db } from './db.js';
+import { T } from './settings.js';
+import ar from '../lang/ar.js';
+import en from '../lang/en.js';
 
-  // ---------- القائمة الثابتة ----------
-  'menu.products': '🛒 المنتجات',
-  'menu.profile':  '👤 ملفي',
-  'menu.invites':  '🎁 الدعوات',
-  'menu.voucher':  '💳 شحن بكود',
-  'menu.topup':    '💰 شحن رصيد',
-  'menu.help':     '❓ المساعدة',
-  'menu.policy':   '🛡 سياسة البوت',
-  'menu.admin':    '⚙️ لوحة التحكم',
+const DICT = { ar, en };
 
-  // ---------- أزرار عامة ----------
-  'btn.close':     '✖️ إغلاق',
-  'btn.back':      '« رجوع',
-  'btn.services':  '« الخدمات',
-  'btn.plans':     '« رجوع للخطط',
-  'btn.prev':      '‹ السابق',
-  'btn.next':      'التالي ›',
-  'btn.cancel':    '« إلغاء',
+export const LANGS = ['ar', 'en'];
+export const DEFAULT_LANG = 'ar';
 
-  // ---------- المتجر ----------
-  'shop.pick':      'اختر الخدمة التي تريدها:',
-  'shop.empty':     '📭 الكتالوج فاضي حالياً.',
-  'shop.available': '🟢 ماهو المتاح',
-  'shop.plans':     '{emoji} اختر خطة <b>{provider}</b> التي تريد تفعيلها:',
-  'shop.noPlans':   '📭 ما في خطط متاحة بهالقسم.',
-  'shop.gone':      '❌ المنتج ما عاد متوفّر.',
+/**
+ * جلب نص وتعبئة المتغيّرات.
+ * @param ctxOrLang  ctx كامل أو رمز لغة ('ar' / 'en')
+ * @param key        مثل 'shop.pick'
+ * @param vars       { name: 'قيمة' } بتستبدل {name} بالنص
+ */
+export function t(ctxOrLang, key, vars) {
+  const lang = typeof ctxOrLang === 'string'
+    ? ctxOrLang
+    : (ctxOrLang?.lang || DEFAULT_LANG);
 
-  'shop.avail.title': '🟢 <b>المتاح الآن</b> · {count} منتج',
-  'shop.avail.none':  '🟢 <b>المتاح الآن</b>\n\n📭 ما في شي متوفّر هلق. جرّب بعد شوي.',
+  // ناقص بالإنكليزي؟ رجّع العربي. ناقص بالتنين؟ رجّع المفتاح
+  // نفسه — بيبيّن فوراً بالشاشة إنو في نص ناسي.
+  let s = DICT[lang]?.[key] ?? DICT[DEFAULT_LANG][key] ?? key;
 
-  // ---------- صفحة المنتج ----------
-  'item.duration':  '⏳ المدة: <b>{days}</b> يوم',
-  'item.warranty':  '🛡 الضمان: <b>{days}</b> يوم',
-  'item.delivery':  '📥 التسليم: {type} · فوري',
-  'item.instr':     'التعليمات المهمة',
-  'item.buy':       '🛒 شراء',
-  'item.inStock':   '🟢 متوفّر',
-  'item.low':       '🟡 متبقّي {n} فقط',
-  'item.out':       '🔴 غير متوفّر حالياً',
+  if (vars) for (const [k, v] of Object.entries(vars)) {
+    s = s.replaceAll(`{${k}}`, String(v ?? ''));
+  }
+  return s;
+}
 
-  // ---------- تأكيد الشراء ----------
-  'confirm.title':  '🧾 <b>تأكيد الشراء</b>',
-  'confirm.price':  '💵 السعر: <b>{price}</b>',
-  'confirm.after':  '💰 رصيدك بعد الشراء: <b>{balance}</b>',
-  'confirm.short':  '❌ رصيدك ما بيكفي. ناقصك <b>{missing}</b>.',
-  'confirm.yes':    '✅ أكّد الشراء',
-  'confirm.topup':  '💰 اشحن رصيد',
+/** كل صيغ مفتاح معيّن — لبناء جدول توجيه أزرار الكيبورد */
+export const allOf = (key) => LANGS.map((l) => t(l, key));
 
-  // ---------- نتيجة الطلب ----------
-  'order.working':  '⏳ عم ننفّذ طلبك…',
-  'order.done':     '✅ <b>تم الشراء</b>',
-  'order.pending':  '⏳ <b>طلبك قيد التنفيذ</b>\nرح يوصلك أول ما يخلص. ما في داعي تعيد الطلب.',
-  'order.failed':   '❌ <b>ما نجح الطلب</b>\n{reason}',
-  'order.refunded': '↩️ رجّعنالك <b>{amount}</b> لمحفظتك.',
-  'order.maint':    'الخدمة بصيانة مؤقتة عند المزوّد. جرّب بعد شوي — ما انخصم منك شي.',
-  'order.noStock':  'المنتج نفد من المخزون.',
-  'order.paused':   'البيع موقوف مؤقتاً على هالمنتج.',
-  'order.badQty':   'الكمية غير صالحة.',
+/**
+ * نصوص طويلة قابلة للتحرير من لوحة التحكم (ترحيب، سياسة، مساعدة).
+ * محفوظة بجدول texts مفتاحين: welcome و welcome_en.
+ */
+export const longText = (lang, key, fallback = '') =>
+  lang === 'en' ? T(`${key}_en`, T(key, fallback)) : T(key, fallback);
 
-  // ---------- التسليم ----------
-  'deliv.link':     '🔗 رابط التفعيل',
-  'deliv.code':     '🎟 الكود',
-  'deliv.account':  '🔐 بيانات الحساب',
-  'deliv.warn':     '⚠️ احتفظ فيها بمكان آمن — ما منقدر نعرضها مرة تانية.',
+export const welcomeText = (lang) =>
+  longText(lang, 'welcome', '<blockquote>👋 مرحبًا بك!</blockquote>');
 
-  // ---------- عام ----------
-  'sys.maintenance': '🛠 البوت تحت الصيانة حالياً. جرّب بعد شوي.',
-  'sys.banned':      '🚫 حسابك محظور.',
-  'sys.error':       '⚠️ صار خلل. جرّب مرة تانية.',
-  'sys.loading':     '⏳ لحظة…',
-
-  // ---------- اللغة ----------
-  'lang.title':    '🌐 <b>اللغة</b>',
-  'lang.pick':     'اختر لغة البوت:',
-  'lang.current':  'اللغة الحالية: <b>العربية</b>',
-  'lang.done':     '✅ تم تغيير اللغة إلى العربية.',
-  'lang.ar':       '🇸🇦 العربية',
-  'lang.en':       '🇬🇧 English',
-
-  // ---------- الأوامر ----------
-  'cmd.start':     'القائمة الرئيسية',
-  'cmd.menu':      'فتح القائمة',
-  'cmd.lang':      'تغيير اللغة · Change language',
-};
+export async function setLang(tgId, lang) {
+  const v = LANGS.includes(lang) ? lang : DEFAULT_LANG;
+  await db.from('users').update({ lang: v }).eq('tg_id', tgId);
+  return v;
+}
