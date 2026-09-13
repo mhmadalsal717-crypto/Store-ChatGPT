@@ -100,11 +100,21 @@ screen('item', async (ctx, [slug]) => {
     p.warranty_days ? `${E('shield')} الضمان: <b>${p.warranty_days}</b> يوم` : null,
     `📥 التسليم: ${deliveryLabel(p.delivery_type)} · فوري`,
     stock,
-    desc ? `\n${clip(desc, 900)}` : null,
+    null,   // مكان الوصف — بينضاف تحت بعد حساب المتبقّي
   ].filter(Boolean).join('\n');
 
-  // اقتباس قابل للطي — نفس شكل بوت GGSoma
-  const blocks = instr ? quote('التعليمات المهمة', clip(instr, 2000)) : '';
+  // حد رسالة تلغرام 4096. كانت الأرقام مثبّتة (900 للوصف و2000
+  // للتعليمات) فمنتجات كتير كان وصفها وتعليماتها بينقصّوا بلا داعي.
+  // هلق منوزّع المتبقّي فعلياً: التعليمات أولوية لأنها يلي بدها
+  // ياها الزبون بعد الشراء.
+  const LIMIT = 3900;
+  const instrRoom = Math.max(0, LIMIT - head.length - 80);
+  const blocks = instr
+    ? quote('التعليمات المهمة', clip(instr, Math.min(instrRoom, 2500)))
+    : '';
+
+  const descRoom = Math.max(0, LIMIT - head.length - blocks.length - 40);
+  const descPart = desc && descRoom > 120 ? `\n${clip(desc, descRoom)}` : '';
 
   const k = kb();
   if (p.in_stock) {
@@ -113,7 +123,7 @@ screen('item', async (ctx, [slug]) => {
   if (isAdmin(ctx.from.id)) k.text('✏️ تعديل المنتج', to('a_prod', slug)).row();
   k.text('« رجوع للخطط', to('plans', p.provider_key, '1'));
 
-  return { text: head + (blocks ? '\n' + blocks : ''), kb: k.build() };
+  return { text: head + descPart + (blocks ? '\n' + blocks : ''), kb: k.build() };
 });
 
 // ---------- ملخّص الطلب ----------
