@@ -44,7 +44,7 @@ screen('admin', async (ctx) => {
     .text('🎨 المظهر', to('a_set', 'المظهر')).text('🔔 الإشعارات', to('a_set', 'الإشعارات')).row()
     .text('⚙️ النظام', to('a_set', 'النظام')).text('💳 الدفع', to('a_set', 'الدفع')).row()
     .text('📝 النصوص', to('a_texts')).text('😀 الإيموجي', to('a_emoji')).row()
-    .text('🗂 المزوّدين', to('a_provs')).row()
+    .text('🗂 المزوّدين', to('a_provs')).text('🚪 البوابة', to('a_gate')).row()
     .text('📦 المنتجات', to('a_prods', '1')).row()
     .text(`📤 السحوبات${badge(wd.count)}`, to('a_wds')).row()
     .text(`⏳ الطلبات العالقة${badge(stuck.count)}`, to('a_stuck')).row()
@@ -773,5 +773,57 @@ screen('a_pvset', async (ctx, [key, field]) => {
         `<i>الاسم الأصلي بيضل محفوظ — المزامنة ما بتدهس تعديلك.</i>`
       : `🔢 أرسل رقم الترتيب.\nالأصغر بيطلع أول. مثال: <code>10</code>`,
     kb: kb().text('« إلغاء', to('a_prov', key)).build(),
+  };
+});
+
+
+// ============================================================
+//  بوابة الدخول — إجبار الاشتراك
+// ============================================================
+screen('a_gate', async (ctx) => {
+  if (!isAdmin(ctx.from.id)) return { text: '⛔️', kb: kb().build() };
+
+  const on = Sbool('force_join', false);
+  const f  = (k) => (S(k) || '').trim() || '— فاضي';
+
+  return {
+    text: `🚪 <b>بوابة الدخول</b>\n${RULE}\n` +
+          `الحالة: <b>${on ? '🟢 مفعّلة' : '🔴 مطفأة'}</b>\n\n` +
+          `💬 معرّف المجموعة: <code>${esc(f('join_group_id'))}</code>\n` +
+          `🔗 رابط المجموعة: ${esc(f('join_group_url'))}\n\n` +
+          `📢 معرّف القناة: <code>${esc(f('join_channel_id'))}</code>\n` +
+          `🔗 رابط القناة: ${esc(f('join_channel_url'))}\n\n` +
+          `<i>⚠️ البوت لازم يكون أدمن بالمجموعة وبالقناة، وإلا ما بيقدر\n` +
+          `يتحقق من العضوية. لو فشل الفحص بيسمح بالدخول بدل ما يقفل الباب.</i>`,
+    kb: kb()
+      .text(on ? '🔴 إطفاء' : '🟢 تفعيل', to('a_gate_tog')).row()
+      .text('💬 معرّف المجموعة', to('a_gate_set', 'join_group_id'))
+      .text('🔗 رابط المجموعة', to('a_gate_set', 'join_group_url')).row()
+      .text('📢 معرّف القناة', to('a_gate_set', 'join_channel_id'))
+      .text('🔗 رابط القناة', to('a_gate_set', 'join_channel_url')).row()
+      .text('« رجوع', to('admin'))
+      .build(),
+  };
+});
+
+screen('a_gate_tog', async (ctx) => {
+  if (!isAdmin(ctx.from.id)) return { text: '⛔️', kb: kb().build() };
+  await setSetting('force_join', Sbool('force_join', false) ? 'off' : 'on');
+  invalidate();
+  await loadAll(true);
+  return go(ctx, 'a_gate');
+});
+
+screen('a_gate_set', async (ctx, [key]) => {
+  if (!isAdmin(ctx.from.id)) return { text: '⛔️', kb: kb().build() };
+  ask(ctx.from.id, 'gate', { key });
+  const isId = key.endsWith('_id');
+  return {
+    text: isId
+      ? `أرسل معرّف الدردشة.\n\nطريقة سهلة: حوّل أي رسالة من المجموعة\n` +
+        `إلى <code>@userinfobot</code> وبياخد المعرّف.\n` +
+        `بيبدأ بـ <code>-100</code> عادةً.\n\nأرسل <code>-</code> للحذف.`
+      : `أرسل الرابط، مثل <code>https://t.me/yourgroup</code>\n\nأرسل <code>-</code> للحذف.`,
+    kb: kb().text('« إلغاء', to('a_gate')).build(),
   };
 });
