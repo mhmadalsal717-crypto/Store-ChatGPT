@@ -6,6 +6,7 @@ import { gg, GGError } from '../lib/ggsoma.js';
 import { db, rpc } from '../lib/db.js';
 import { Snum } from '../lib/settings.js';
 import { finishOrder } from './purchase.js';
+import { setHealth } from './health.js';
 
 const MAX_ATTEMPTS = 6;
 const MIN_AGE_MS   = 30_000;
@@ -84,22 +85,41 @@ async function resolveOne(o, { notifyAdmin, notifyUser }) {
   }
 }
 
-/**
- * فحص صحة الخدمة — موصى فيه بقائمة التكامل (§16).
- * وضع الصيانة بيوقف كل المسارات المحمية بـ 503.
- */
+// ============================================================
+//  الفحص الصحي
+//
+//  الحالة محفوظة بالذاكرة عشان شغلتين:
+//    1) purchase.js بيقراها قبل ما يخصم من الزبون. وقت الصيانة
+//       منرفض الشراء من البداية بدل ما نخصم وبعدين نفشل ونرجّع.
+//    2) التنبيه بينبعت عند تغيّر الحالة بس. بدون هيك كان رح
+//       يوصلك تنبيه كل 5 دقائق طول فترة الصيانة.
+// ============================================================
 export async function checkHealth({ notifyAdmin }) {
+  let ok = true, reason = null;
+
   try {
     const h = await gg.health();
-    if (h.maintenance) {
-      notifyAdmin?.('🛠 GGSoma بوضع الصيانة — الطلبات موقوفة مؤقتاً. المُصالح رح يكمّلها لما ترجع.');
-      return false;
-    }
-    return true;
+    ok = !h.maintenance;
+    if (h.maintenance) reason = 'MAINTENANCE';
   } catch (e) {
-    notifyAdmin?.(`⚠️ ما قدرنا نوصل لـ GGSoma: ${e.code || e.message}`);
-    return false;
+    ok = false;
+    reason = e.code || e.message;
   }
+
+  const was = setHealth(ok, reason);
+  const healthy = ok;
+
+  if (was && !healthy) {
+    notifyAdmin?.(
+      reason === 'MAINTENANCE'
+        ? '🛠 <b>GGSoma بوضع الصيانة</b>\nوقّفنا الشراء مؤقتاً. الطلبات المعلّقة رح يكمّلها المُصالح لما ترجع الخدمة.'
+        : `🔴 <b>ما قدرنا نوصل لـ GGSoma</b>\n<code>${reason}</code>\nوقّفنا الشراء مؤقتاً.`
+    );
+  } else if (!was && healthy) {
+    notifyAdmin?.('🟢 <b>GGSoma رجعت</b> — الشراء اشتغل من جديد.');
+  }
+
+  return healthy;
 }
 
 /** مراقبة رصيدنا عند GGSoma */
