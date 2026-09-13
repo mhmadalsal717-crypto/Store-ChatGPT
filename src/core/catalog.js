@@ -15,6 +15,20 @@ import { basePrice } from './pricing.js';
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
+/**
+ * فرز قيمة الإيموجي الجاية من GGSoma.
+ * لبعض المزوّدين بيرجع emoji.normal معرّف رقمي بدل إيموجي، فيطلع
+ * بنص الزر: «6318816857230942976 Heygen». منفرزه لمكانه الصح.
+ */
+function splitEmoji(raw) {
+  const s = String(raw ?? '').trim();
+  if (!s) return { emoji: null, id: null };
+  if (/^\d{6,}$/.test(s)) return { emoji: null, id: s };
+  if (!/[^\x00-\x7F]/.test(s)) return { emoji: null, id: null };
+  if ([...s].length > 8) return { emoji: null, id: null };
+  return { emoji: s, id: null };
+}
+
 export async function syncCatalog() {
   const globalMarkup = Snum('markup_pct', 40);
 
@@ -26,15 +40,18 @@ export async function syncCatalog() {
   const pOld = Object.fromEntries((oldProv || []).map((r) => [r.key, r]));
 
   if (providers.length) {
-    await db.from('providers').upsert(providers.map((p) => ({
+    await db.from('providers').upsert(providers.map((p) => {
+      const e = splitEmoji(p.emoji?.normal);
+      return {
       key: p.key,
       name: p.name,
-      emoji: p.emoji?.normal || null,
-      custom_emoji_id: pOld[p.key]?.custom_emoji_id ?? p.emoji?.customTelegramId ?? null,
+      emoji: e.emoji,
+      custom_emoji_id: pOld[p.key]?.custom_emoji_id ?? p.emoji?.customTelegramId ?? e.id ?? null,
       sort_order: p.sortOrder ?? 100,
       visible: pOld[p.key]?.visible ?? true,
       updated_at: new Date().toISOString(),
-    })), { onConflict: 'key' });
+      };
+    }), { onConflict: 'key' });
 
     const liveKeys = new Set(providers.map((p) => p.key));
     const goneP = (oldProv || []).filter((r) => !liveKeys.has(r.key)).map((r) => r.key);
@@ -60,6 +77,7 @@ export async function syncCatalog() {
     const stock = p.stock?.count ?? 0;
     const inStock = !!p.stock?.inStock;
     const mk = o?.markup_pct ?? globalMarkup;
+    const pe = splitEmoji(p.emoji?.normal);
 
     // كشف التغيّر بالمخزون
     //
@@ -102,8 +120,8 @@ export async function syncCatalog() {
       product_code: p.productCode || null,
       name: p.name,
       provider_key: p.provider?.key || null,
-      emoji: p.emoji?.normal || null,
-      custom_emoji_id: o?.custom_emoji_id ?? p.emoji?.customTelegramId ?? null,
+      emoji: pe.emoji,
+      custom_emoji_id: o?.custom_emoji_id ?? p.emoji?.customTelegramId ?? pe.id ?? null,
       delivery_type: p.deliveryType,
       cost_price: Number(p.yourPrice),
       catalog_price: p.catalogPrice != null ? Number(p.catalogPrice) : null,
