@@ -8,7 +8,7 @@ import { kb } from './bot/kb.js';
 import { to } from './bot/nav.js';
 import { syncCatalog } from './core/catalog.js';
 import { enforceMargins } from './core/guard.js';
-import { reconcileOnce, checkWallet } from './core/reconciler.js';
+import { reconcileOnce, checkWallet, checkHealth } from './core/reconciler.js';
 import { flushStockAlerts } from './core/notify.js';
 import { expireStale } from './core/payments.js';
 import { mountWebhooks } from './web/webhooks.js';
@@ -106,7 +106,25 @@ async function sync() {
     }
   } catch (e) { console.error('[sync]', e.message); }
 }
-setInterval(sync, Math.max(5, Snum('sync_minutes', 10)) * 60_000);
+/**
+ * جدولة ذاتية بدل setInterval — لسببين:
+ *
+ *   1) قفل. مع مزامنة كل دقيقة، دورة بطيئة كانت رح تتداخل مع
+ *      الجاية، والتنتين بيحسبوا نفس «المخزون الجديد» ويدرجوا
+ *      إشعارين لنفس المنتج. هيدا كان السبب الأساسي للتكرار.
+ *
+ *   2) sync_minutes بينقرأ كل دورة، فتغييره من لوحة التحكم
+ *      بيشتغل فوراً بدون إعادة تشغيل.
+ */
+let syncing = false;
+async function syncLoop() {
+  if (!syncing) {
+    syncing = true;
+    try { await sync(); } finally { syncing = false; }
+  }
+  const mins = Math.max(1, Snum('sync_minutes', 1));
+  setTimeout(syncLoop, mins * 60_000);
+}
 
 // بث إشعارات المخزون — منفصل حتى ما يعطّل المزامنة
 setInterval(async () => {
@@ -122,4 +140,20 @@ setInterval(() => expireStale().catch(() => {}), 5 * 60_000);
 // مراقبة رصيد GGSoma
 setInterval(() => checkWallet({ notifyAdmin }).catch(() => {}), 3600_000);
 
-sync().then(() => console.log('✔ الكتالوج متزامن'));
+/**
+ * الفحص الصحي — بند إلزامي بقائمة تحقق الوثائق §16:
+ * «Implement GET /health check before orders».
+ *
+ * كانت checkHealth مكتوبة بـ reconciler.js وما حدا بيستدعيها.
+ * النتيجة: وقت صيانة GGSoma، كل زبون بينخصم منه وبيفشل طلبه.
+ * هلق منكشف الصيانة ومنوقف البيع قبل ما نخصم من حدا.
+ */
+let healthLoopMs = () => Math.max(1, Snum('health_check_min', 5)) * 60_000;
+async function healthLoop() {
+  try { await checkHealth({ notifyAdmin }); }
+  catch (e) { console.error('[health]', e.message); }
+  setTimeout(healthLoop, healthLoopMs());
+}
+
+syncLoop();
+healthLoop();
