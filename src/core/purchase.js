@@ -17,6 +17,7 @@ import { gg, GGError } from '../lib/ggsoma.js';
 import { db, rpc } from '../lib/db.js';
 import { Snum } from '../lib/settings.js';
 import { getProduct } from './catalog.js';
+import { isHealthy } from './health.js';
 import { finalPrice } from './pricing.js';
 import { checkMargin } from './guard.js';
 
@@ -27,6 +28,12 @@ export const newExternalId = (tgId) =>
  * @returns {{state:'DELIVERED'|'PENDING'|'FAILED', ...}}
  */
 export async function purchase({ tgId, slug, quantity = 1, user, notifyAdmin }) {
+  // بوابة الصيانة — §16 بالوثائق: افحص /health قبل الطلبات.
+  // منرفض من هون قبل أي خصم، بدل ما نخصم وبعدين نفشل ونرجّع.
+  if (!isHealthy()) {
+    return fail('الخدمة بصيانة مؤقتة عند المزوّد. جرّب بعد شوي — ما انخصم منك شي.');
+  }
+
   const product = await getProduct(slug);
   if (!product || !product.visible || product.deleted_at)
                                                      return fail('المنتج مو متوفّر حالياً.');
