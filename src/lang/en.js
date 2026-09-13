@@ -83,9 +83,15 @@ export default {
   'lang.ar':       '🇸🇦 العربية',
   'lang.en':       '🇬🇧 English',
 
+  // ---------- Join gate ----------
+  'join.text':    'Welcome! 👋\n\nTo use the bot and get services, you must first join our Telegram group and channel.\n\n👇 Tap the buttons below to join, then tap "Verify now".',
+  'join.group':   '💬 Join the group',
+  'join.channel': '📢 Join the channel',
+  'join.verify':  '✅ Verify now',
+  'join.missing': 'You have not joined everything yet. Join the group and channel, then try again.',
+
   // ---------- Bot commands ----------
   'cmd.start':     'Main menu',
   'cmd.menu':      'Open menu',
   'cmd.lang':      'Change language · تغيير اللغة',
 };
-
