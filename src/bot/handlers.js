@@ -120,7 +120,16 @@ const HANDLERS = {
   async provider(ctx, body, { key, field }) {
     const v = String(body).trim();
 
-    if (field === 'order') {
+    if (field === 'name') {
+      // عمود منفصل عن قصد: المزامنة كل دقيقة بتكتب name من عندهم،
+      // فلو حفظنا التعديل عليه بينمسح بعد دقيقة.
+      const clear = v === '-' || v === '';
+      if (!clear && v.length > 40) {
+        ask(ctx.from.id, 'provider', { key, field });
+        return ctx.reply('❌ الاسم طويل. 40 حرف كحد أقصى.');
+      }
+      await db.from('providers').update({ name_override: clear ? null : v }).eq('key', key);
+    } else if (field === 'order') {
       const n = parseInt(v.replace(/[^\d-]/g, ''), 10);
       if (!Number.isFinite(n)) {
         ask(ctx.from.id, 'provider', { key, field });
