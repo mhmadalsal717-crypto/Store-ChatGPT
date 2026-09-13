@@ -117,6 +117,14 @@ const HANDLERS = {
     await go(ctx, 'a_emoji', [], { forceNew: true });
   },
 
+  async gate(ctx, body, { key }) {
+    const v = String(body).trim();
+    await db.from('texts').upsert(
+      { key, content: v === '-' ? '' : v }, { onConflict: 'key' });
+    invalidate();
+    await go(ctx, 'a_gate', [], { forceNew: true });
+  },
+
   async provider(ctx, body, { key, field }) {
     const v = String(body).trim();
 
