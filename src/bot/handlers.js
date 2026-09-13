@@ -3,7 +3,7 @@
 // ============================================================
 import { db, rpc, ensureUser } from '../lib/db.js';
 import { esc, money, RULE } from '../lib/fmt.js';
-import { invalidate, Snum } from '../lib/settings.js';
+import { invalidate, loadAll, setText, Snum } from '../lib/settings.js';
 import { go, to } from './nav.js';
 import { take, ask } from './input.js';
 import { broadcast } from '../core/notify.js';
@@ -119,9 +119,11 @@ const HANDLERS = {
 
   async gate(ctx, body, { key }) {
     const v = String(body).trim();
-    await db.from('texts').upsert(
-      { key, content: v === '-' ? '' : v }, { onConflict: 'key' });
+    // setText بتكتب بجدول texts. الـ upsert القديم كان بيمسح
+    // عمود label، و invalidate لحاله ما بتعيد التحميل فوراً.
+    await setText(key, v === '-' ? '' : v);
     invalidate();
+    await loadAll(true);
     await go(ctx, 'a_gate', [], { forceNew: true });
   },
 
