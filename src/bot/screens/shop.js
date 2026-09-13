@@ -6,7 +6,7 @@ import { kb, stockStyle } from '../kb.js';
 import { ensureUser } from '../../lib/db.js';
 import { E, Snum, Sbool } from '../../lib/settings.js';
 import { esc, money, RULE, quote, deliveryLabel } from '../../lib/fmt.js';
-import { listProviders, listProducts, getProduct,
+import { listProviders, listProducts, getProduct, listAvailable, provName,
          productDesc, productInstr } from '../../core/catalog.js';
 import { clip } from '../../lib/html.js';
 import { welcomeText } from '../../lib/i18n.js';
@@ -29,18 +29,16 @@ screen('providers', async () => {
              kb: kb().text('✖️ إغلاق', to('close')).build() };
   }
 
-  // عمودين افتراضياً، ومزوّد معلّم full_width بياخد سطر لحاله —
-  // نفس أسلوب GGSoma بـ «اشتراكات رسمية» و«Gemini».
+  // عمودين افتراضياً، ومزوّد معلّم full_width بياخد سطر لحاله.
   //
-  // ⚠️ هالتخطيط ما بيجي من الـ API. الوثائق §17 صريحة إنو ترتيب
-  // وتخطيط بوتهم قواعد داخلية عندهم مو مكشوفة. فمنضبطه يدوياً من
-  // ⚙️ لوحة التحكم ← 🗂 المزوّدين.
+  // ⚠️ التخطيط ما بيجي من الـ API — الوثائق §17 بتقول إن تخطيط
+  // بوتهم قواعد داخلية عندهم. منضبطه من ⚙️ لوحة التحكم ← 🗂 المزوّدين.
   const k = kb();
   let col = 0;
   for (const p of provs) {
     if (p.full_width && col === 1) { k.row(); col = 0; }
     k.add({
-      text: `${p.emoji || ''} ${p.name}`.trim(),
+      text: `${p.emoji || ''} ${provName(p)}`.trim(),
       data: to('plans', p.key, '1'),
       icon: p.custom_emoji_id || undefined,
     });
@@ -48,9 +46,51 @@ screen('providers', async () => {
     if (p.full_width || col === 2) { k.row(); col = 0; }
   }
   k.row();
+  k.add({ text: '🟢 ماهو المتاح', data: to('avail', '1'), style: 'success' }).row();
   k.text('✖️ إغلاق', to('close'));
 
   return { text: 'اختر الخدمة التي تريدها:', kb: k.build() };
+});
+
+// ---------- ماهو المتاح ----------
+// كل منتج فيه مخزون الآن، مجمّع تحت خدمته. الزبون بيشوف بلمحة
+// شو يقدر يشتري بدل ما يفوت على كل خدمة وحدة وحدة.
+screen('avail', async (ctx, [pageStr]) => {
+  const page = Math.max(1, Number(pageStr || 1));
+  const per  = 18;
+
+  const rows = await listAvailable();
+  if (!rows.length) {
+    return {
+      text: '🟢 <b>المتاح الآن</b>\n\n📭 ما في شي متوفّر هلق. جرّب بعد شوي.',
+      kb: kb().text('« الخدمات', to('providers')).build(),
+    };
+  }
+
+  const u     = await ensureUser(ctx.from);
+  const pages = Math.max(1, Math.ceil(rows.length / per));
+  const slice = rows.slice((page - 1) * per, page * per);
+
+  const lines = [];
+  let lastProv = null;
+  for (const r of slice) {
+    const pv = r.providers || {};
+    if (r.provider_key !== lastProv) {
+      lines.push(`\n${pv.emoji || '▫️'} <b>${esc(pv.name_override || pv.name || '')}</b>`);
+      lastProv = r.provider_key;
+    }
+    const n = Number(r.stock_count || 0);
+    lines.push(`· ${esc(r.name)} — ${money(finalPrice(r, u))} <i>(${n >= 9999 ? '∞' : n})</i>`);
+  }
+
+  const k = kb();
+  k.pager({ page, totalPages: pages, make: (n) => to('avail', String(n)) });
+  k.text('« الخدمات', to('providers'));
+
+  return {
+    text: `🟢 <b>المتاح الآن</b> · ${rows.length} منتج\n${lines.join('\n')}`,
+    kb: k.build(),
+  };
 });
 
 screen('plans', async (ctx, [providerKey, pageStr]) => {
