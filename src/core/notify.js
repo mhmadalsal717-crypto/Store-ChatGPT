@@ -74,7 +74,7 @@ export function stockAlertText(product, alert) {
  * حتى البث ما يعطّل دورة المزامنة.
  */
 export async function flushStockAlerts(api) {
-  const maxPerRun = Snum('max_stock_alerts', 5);
+  const maxPerRun = Snum('max_stock_alerts', 2);
 
   const { data: queued } = await db.from('stock_alerts')
     .select('*').eq('status', 'QUEUED').order('created_at').limit(maxPerRun);
@@ -111,7 +111,7 @@ export async function flushStockAlerts(api) {
 
     totalSent += r.sent;
     alerts++;
-    await sleep(2000);   // فاصل بين منتج ومنتج
+    await sleep(4000);   // فاصل بين منتج ومنتج — يمنع وابل رسائل
   }
 
   return { alerts, sent: totalSent };
