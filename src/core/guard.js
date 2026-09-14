@@ -11,7 +11,7 @@
 // ============================================================
 import { db } from '../lib/db.js';
 import { Snum, Sbool } from '../lib/settings.js';
-import { marginOf, maxTierDiscount } from './pricing.js';
+import { marginOf, maxTierDiscount, flatMode } from './pricing.js';
 
 export { maxTierDiscount };
 
@@ -21,10 +21,23 @@ export { maxTierDiscount };
  */
 export function checkMargin(product) {
   const m = marginOf(product);
-  if (m.cost <= 0) return { ok: true, floor: m.floor, cost: m.cost, marginPct: 100 };
+  if (m.cost <= 0) return { ok: true, floor: m.floor, cost: m.cost, marginPct: 100, profit: m.minProfit };
+
+  // ⚠️ مقياس مختلف لكل وضع، وهاد مو تفصيل شكلي:
+  //
+  // بوضع الهامش الثابت، منتج تكلفته 50$ وربحك عليه 2$ نسبته 4% —
+  // لو قسناه بمقياس «5% كحد أدنى» كان رح ينوقف بيعه تلقائياً
+  // وهو رابح تماماً. لهيك بوضع flat منقيس بالدولار مو بالنسبة.
+  if (flatMode()) {
+    return {
+      ok: m.minProfit >= Snum('min_margin_usd', 0.5),
+      floor: m.floor, cost: m.cost, marginPct: m.minPct, profit: m.minProfit,
+    };
+  }
+
   return {
     ok: m.minPct >= Snum('min_margin_pct', 5),
-    floor: m.floor, cost: m.cost, marginPct: m.minPct,
+    floor: m.floor, cost: m.cost, marginPct: m.minPct, profit: m.minProfit,
   };
 }
 
@@ -52,7 +65,9 @@ export async function enforceMargins() {
       // وقّف البيع
       const reason = costRose
         ? `ارتفعت التكلفة من ${fmt(p.last_cost)} لـ ${fmt(p.cost_price)}`
-        : `الهامش ${m.marginPct.toFixed(1)}% تحت الحد ${Snum('min_margin_pct', 5)}%`;
+        : flatMode()
+          ? `الربح ${fmt(m.profit)} تحت الحد ${fmt(Snum('min_margin_usd', 0.5))}`
+          : `الهامش ${m.marginPct.toFixed(1)}% تحت الحد ${Snum('min_margin_pct', 5)}%`;
 
       await db.from('products')
         .update({ paused: true, paused_reason: reason, last_cost: p.cost_price })
