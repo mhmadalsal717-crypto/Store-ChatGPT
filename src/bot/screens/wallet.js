@@ -7,13 +7,23 @@ import { db, ensureUser } from '../../lib/db.js';
 import { E, T, S, Snum } from '../../lib/settings.js';
 import { esc, money, RULE, arDate, statusIcon } from '../../lib/fmt.js';
 import { ask } from '../input.js';
+import { t } from '../../lib/i18n.js';
 
 // ---------- شحن رصيد ----------
 // ---------- شحن بكود ----------
 screen('voucher', async (ctx) => {
   ask(ctx.from.id, 'voucher');
-  return { text: `${E('card')} <b>شحن بكود</b>\n${RULE}\nالرجاء إرسال كود الشحن — بانتظارك:`,
-           kb: kb().text('« الرئيسية', to('home')).build() };
+  const su = (T('support_user', '@XBLLT') || '').replace(/^@/, '');
+
+  const k = kb();
+  if (su) k.url('💬 ' + t(ctx, 'vou.request'), `https://t.me/${su}`).row();
+  k.text(t(ctx, 'btn.close'), to('close'));
+
+  return {
+    text: `<blockquote>${E('card')} <b>${t(ctx, 'vou.title')}</b></blockquote>\n\n` +
+          t(ctx, 'vou.prompt'),
+    kb: k.build(),
+  };
 });
 
 // ---------- ملف السحب (Binance ID) ----------
