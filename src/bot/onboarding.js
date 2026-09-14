@@ -21,9 +21,10 @@ import { money } from '../lib/fmt.js';
 import { t, LANGS, setLang, welcomeText } from '../lib/i18n.js';
 import { mainMenu } from './menu.js';
 
-export const STEP_LANG = 0;
-export const STEP_JOIN = 1;
-export const STEP_DONE = 2;
+export const STEP_LANG  = 0;
+export const STEP_JOIN  = 1;
+export const STEP_HUMAN = 2;
+export const STEP_DONE  = 3;
 
 const MEMBER = ['member', 'administrator', 'creator'];
 
@@ -59,9 +60,24 @@ export async function isJoined(api, tgId) {
   return true;
 }
 
+/**
+ * الخطوة الجاية بعد اللغة: تحقق بشري إذا مفعّل، وإلا خلص.
+ * منفصلة لأنها بتنستدعى من مكانين — بعد اللغة وبعد الاشتراك.
+ */
+async function afterJoin(ctx) {
+  if (Sbool('ref_human_check', true)) {
+    await setStep(ctx.from.id, STEP_HUMAN);
+    return { goto: 'ob_human' };
+  }
+  await finish(ctx);
+  return null;
+}
+
 /** ختم البوابة + الترحيب. الكيبورد الثابت بدّه رسالة جديدة مو تعديل. */
 async function finish(ctx) {
   await setStep(ctx.from.id, STEP_DONE);
+  // المدعو صار موثوق — هون بينحسب لمُحيله
+  await db.from('users').update({ ref_verified: true }).eq('tg_id', ctx.from.id);
   await ctx.deleteMessage().catch(() => {});
   await ctx.reply(welcomeText(ctx.lang), {
     parse_mode: 'HTML',
@@ -116,10 +132,8 @@ screen('ob_lang', async () => ({
 screen('ob_set', async (ctx, [code]) => {
   ctx.lang = await setLang(ctx.from.id, LANGS.includes(code) ? code : 'ar');
 
-  if (!joinRequired() || await isJoined(ctx.api, ctx.from.id)) {
-    await finish(ctx);
-    return null;
-  }
+  if (!joinRequired() || await isJoined(ctx.api, ctx.from.id)) return afterJoin(ctx);
+
   await setStep(ctx.from.id, STEP_JOIN);
   return { goto: 'ob_join' };
 });
@@ -135,11 +149,40 @@ screen('ob_join', async (ctx) => {
 });
 
 screen('ob_check', async (ctx) => {
-  if (await isJoined(ctx.api, ctx.from.id)) {
-    await finish(ctx);
-    return null;
-  }
+  if (await isJoined(ctx.api, ctx.from.id)) return afterJoin(ctx);
   await ctx.answerCallbackQuery?.({ text: t(ctx, 'join.missing'), show_alert: true })
     .catch(() => {});
   return null;   // خلّي الشاشة زي ما هي
+});
+
+
+// ============================================================
+//  الخطوة 2 — التحقق البشري
+//
+//  تحدّي بسيط: اختر الرقم المطلوب من أربعة. الغاية مو أمان قوي،
+//  الغاية توقف السكربتات يلي بتفتح مئة حساب وتضغط الأزرار آلياً.
+//  الرقم مشتق من معرّف المستخدم فما منحتاج نخزّن حالة.
+// ============================================================
+const challengeFor = (tgId) => (Number(tgId) % 4);   // 0..3
+
+screen('ob_human', async (ctx) => {
+  const idx  = challengeFor(ctx.from.id);
+  const nums = [3, 7, 5, 9];
+  const want = nums[idx];
+
+  const k = kb();
+  nums.forEach((n, i) => k.text(String(n), to('ob_hv', String(i))));
+  k.row();
+
+  return { text: t(ctx, 'hv.title', { n: want }), kb: k.build() };
+});
+
+screen('ob_hv', async (ctx, [pick]) => {
+  if (Number(pick) !== challengeFor(ctx.from.id)) {
+    await ctx.answerCallbackQuery?.({ text: t(ctx, 'hv.wrong'), show_alert: true })
+      .catch(() => {});
+    return null;
+  }
+  await finish(ctx);
+  return null;
 });
