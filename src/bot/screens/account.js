@@ -182,25 +182,4 @@ screen('ledger', async (ctx, [pageStr]) => {
            kb: k.build() };
 });
 
-// ---------- الدعوات ----------
-screen('invites', async (ctx) => {
-  const u  = await ensureUser(ctx.from);
-  const me = await ctx.api.getMe();
-  const { count } = await db.from('users')
-    .select('id', { count: 'exact', head: true }).eq('referred_by', u.id);
-
-  const link = `https://t.me/${me.username}?start=${u.ref_code}`;
-  const pct  = Snum('referral_pct', 0);
-
-  const text = [
-    `${E('gift')} <b>الدعوات</b>`, RULE,
-    pct > 0 ? `اربح <b>${pct}%</b> من كل عملية شراء يعملها من تدعوه — للأبد.` : 'شارك رابطك مع أصدقائك:',
-    ``, `<code>${link}</code>`, ``,
-    `👥 عدد المدعوين: <b>${count ?? 0}</b>`,
-    `💵 أرباحك: <b>${money(u.ref_earned)}</b>`,
-  ].join('\n');
-
-  return { text, kb: kb()
-    .url('📤 مشاركة الرابط', `https://t.me/share/url?url=${encodeURIComponent(link)}`).row()
-    .text('« الرئيسية', to('home')).build() };
-});
+// شاشة «الدعوات» انتقلت لـ src/bot/referrals.js — نظام المراحل
