@@ -18,6 +18,7 @@ import { handleInput } from './handlers.js';
 import { wireStars } from './payflow.js';
 
 // تسجيل كل الشاشات
+import './referrals.js';
 import './screens/shop.js';
 import './screens/account.js';
 import './screens/wallet.js';
@@ -82,7 +83,8 @@ bot.use(async (ctx, next) => {
     const m = /^\/start\s+(\S+)/.exec(ctx.message?.text || '');
     if (m) await applyReferral(ctx, bot.api, m[1]).catch(() => {});
 
-    await go(ctx, step === 0 ? 'ob_lang' : 'ob_join', [], { forceNew: true });
+    const screenFor = ['ob_lang', 'ob_join', 'ob_human'][step] || 'ob_lang';
+    await go(ctx, screenFor, [], { forceNew: true });
     return;
   }
 
