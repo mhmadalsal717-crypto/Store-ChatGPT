@@ -1,186 +1,131 @@
 // ============================================================
-//  شاشات الحساب: ملفي / حالتي / طلباتي / كشف المحفظة / السحب / الدعوات
+//  العربية — كل نص يشوفه الزبون
+//  المفاتيح مرتّبة حسب الشاشة. شوف README.md بنفس المجلد.
 // ============================================================
-import { screen, to } from '../nav.js';
-import { kb } from '../kb.js';
-import { db, ensureUser } from '../../lib/db.js';
-import { E, T, Snum } from '../../lib/settings.js';
-import { t } from '../../lib/i18n.js';
-import { esc, money, RULE, bar, arDate, arTime, statusIcon, trim } from '../../lib/fmt.js';
-import { tierOf, nextTier } from '../../core/pricing.js';
-import { renderDelivery } from '../delivery.js';
+export default {
 
-// ---------- ملفي ----------
-screen('profile', async (ctx) => {
-  const u = await ensureUser(ctx.from);
-  const t = tierOf(u.total_spent);
+  // ---------- القائمة الثابتة ----------
+  'menu.products': '🛒 المنتجات',
+  'menu.profile':  '👤 ملفي',
+  'menu.invites':  '🎁 الدعوات',
+  'menu.voucher':  '💳 شحن بكود',
+  'menu.topup':    '💰 شحن رصيد',
+  'menu.help':     '❓ المساعدة',
+  'menu.policy':   '🛡 سياسة البوت',
+  'menu.admin':    '⚙️ لوحة التحكم',
 
-  const [{ count: done }, { count: pend }] = await Promise.all([
-    db.from('orders').select('id', { count: 'exact', head: true })
-      .eq('user_id', u.id).eq('status', 'COMPLETED'),
-    db.from('orders').select('id', { count: 'exact', head: true })
-      .eq('user_id', u.id).eq('status', 'PENDING'),
-  ]);
+  // ---------- أزرار عامة ----------
+  'btn.close':     '✖️ إغلاق',
+  'btn.back':      '« رجوع',
+  'btn.services':  '« الخدمات',
+  'btn.plans':     '« رجوع للخطط',
+  'btn.prev':      '‹ السابق',
+  'btn.next':      'التالي ›',
+  'btn.cancel':    '« إلغاء',
 
-  const text = [
-    `${E('profile')} <b>ملفي</b>`,
-    RULE,
-    `🆔 معرّفك: <code>${ctx.from.id}</code>`,
-    `👤 الاسم: ${esc(u.first_name || '—')}`,
-    `${E('balance')} الرصيد: <b>${money(u.balance)}</b>`,
-    t ? `${t.emoji} المستوى: <b>${esc(t.name)}</b> · خصم ${t.discount_pct}%` : null,
-    `🛒 إجمالي المشتريات: <b>${done ?? 0}</b>`,
-    (pend ?? 0) > 0 ? `⏳ قيد التنفيذ: <b>${pend}</b>` : null,
-    `💸 المصروف: <b>${money(u.total_spent)}</b>`,
-    `🎁 أرباح الإحالة: <b>${money(u.ref_earned)}</b>`,
-    `📅 تاريخ التسجيل: ${arDate(u.created_at)}`,
-  ].filter(Boolean).join('\n');
+  // ---------- المتجر ----------
+  'shop.pick':      'اختر الخدمة التي تريدها:',
+  'shop.empty':     '📭 الكتالوج فاضي حالياً.',
+  'shop.available': '🟢 ماهو المتاح',
+  'shop.plans':     '{emoji} اختر خطة <b>{provider}</b> التي تريد تفعيلها:',
+  'shop.noPlans':   '📭 ما في خطط متاحة بهالقسم.',
+  'shop.gone':      '❌ المنتج ما عاد متوفّر.',
 
-  // 7 أزرار بالضبط — نفس بوت GGSoma.
-  //
-  // شو انشال وليش:
-  //   «شحن رصيد»  -> موجود بالكيبورد الثابت، تكرار
-  //   «الرئيسية»  -> الكيبورد الثابت هو الرئيسية، تكرار
-  //   «سجل الشحن» -> انتقل جوّا شاشة الشحن، مكانه الطبيعي
-  //   «الإشعارات» -> إعداد مو إجراء، انتقل لشاشة الإعدادات
-  const k = kb()
-    .text('📋 طلباتي', to('orders', '1')).text('🏅 حالتي', to('tier')).row()
-    .text('🏦 كشف المحفظة', to('ledger', '1')).text('💰 طلب سحب', to('wd_new')).row()
-    .text('🧾 ملف السحب', to('wd_profile')).text('📄 طلبات السحب', to('wd_list')).row()
-    .text('✖️ إغلاق', to('close'));
+  'shop.avail.title': '🟢 <b>المتاح الآن</b> · {count} منتج',
+  'shop.avail.none':  '🟢 <b>المتاح الآن</b>\n\n📭 ما في شي متوفّر هلق. جرّب بعد شوي.',
 
-  return { text, kb: k.build() };
-});
+  // ---------- صفحة المنتج ----------
+  'item.duration':  '⏳ المدة: <b>{days}</b> يوم',
+  'item.warranty':  '🛡 الضمان: <b>{days}</b> يوم',
+  'item.delivery':  '📥 التسليم: {type} · فوري',
+  'item.instr':     'التعليمات المهمة',
+  'item.buy':       '🛒 شراء',
+  'item.inStock':   '🟢 متوفّر',
+  'item.low':       '🟡 متبقّي {n} فقط',
+  'item.out':       '🔴 غير متوفّر حالياً',
 
-// ---------- حالتي (المستويات) ----------
-screen('tier', async (ctx) => {
-  const u    = await ensureUser(ctx.from);
-  const cur  = tierOf(u.total_spent);
-  const next = nextTier(u.total_spent);
-  const spent = Number(u.total_spent || 0);
+  // ---------- تأكيد الشراء ----------
+  'confirm.title':  '🧾 <b>تأكيد الشراء</b>',
+  'confirm.price':  '💵 السعر: <b>{price}</b>',
+  'confirm.after':  '💰 رصيدك بعد الشراء: <b>{balance}</b>',
+  'confirm.short':  '❌ رصيدك ما بيكفي. ناقصك <b>{missing}</b>.',
+  'confirm.yes':    '✅ أكّد الشراء',
+  'confirm.topup':  '💰 اشحن رصيد',
 
-  let progress = '';
-  if (next) {
-    const from = Number(cur?.min_spent || 0);
-    const need = Number(next.min_spent);
-    const pct  = Math.min(100, ((spent - from) / (need - from)) * 100);
-    progress = [
-      ``, `<b>التقدّم للمستوى التالي:</b>`,
-      `${bar(pct)} ${pct.toFixed(0)}%`,
-      `${money(spent)} / ${money(need)}`,
-      `المتبقّي: <b>${money(need - spent)}</b>`,
-      ``, `المستوى التالي: ${next.emoji} <b>${esc(next.name)}</b> · خصم ${next.discount_pct}%`,
-    ].join('\n');
-  } else {
-    progress = `\n🎉 وصلت لأعلى مستوى.`;
-  }
+  // ---------- نتيجة الطلب ----------
+  'order.working':  '⏳ عم ننفّذ طلبك…',
+  'order.done':     '✅ <b>تم الشراء</b>',
+  'order.pending':  '⏳ <b>طلبك قيد التنفيذ</b>\nرح يوصلك أول ما يخلص. ما في داعي تعيد الطلب.',
+  'order.failed':   '❌ <b>ما نجح الطلب</b>\n{reason}',
+  'order.refunded': '↩️ رجّعنالك <b>{amount}</b> لمحفظتك.',
+  'order.maint':    'الخدمة بصيانة مؤقتة عند المزوّد. جرّب بعد شوي — ما انخصم منك شي.',
+  'order.noStock':  'المنتج نفد من المخزون.',
+  'order.paused':   'البيع موقوف مؤقتاً على هالمنتج.',
+  'order.badQty':   'الكمية غير صالحة.',
 
-  const text =
-    `${E('star')} <b>الحالات</b>\n${RULE}\n` +
-    `الحالة الحالية: ${cur?.emoji || ''} <b>${esc(cur?.name || '—')}</b> · خصم ${cur?.discount_pct || 0}%\n` +
-    progress;
+  // ---------- التسليم ----------
+  'deliv.link':     '🔗 رابط التفعيل',
+  'deliv.code':     '🎟 الكود',
+  'deliv.account':  '🔐 بيانات الحساب',
+  'deliv.warn':     '⚠️ احتفظ فيها بمكان آمن — ما منقدر نعرضها مرة تانية.',
 
-  return { text, kb: kb()
-    .text('🪜 كل المستويات', to('tiers')).row()
-    .text('« الملف الشخصي', to('profile')).build() };
-});
+  // ---------- عام ----------
+  'sys.maintenance': '🛠 البوت تحت الصيانة حالياً. جرّب بعد شوي.',
+  'sys.banned':      '🚫 حسابك محظور.',
+  'sys.error':       '⚠️ صار خلل. جرّب مرة تانية.',
+  'sys.loading':     '⏳ لحظة…',
 
-screen('tiers', async () => {
-  const { data } = await db.from('tiers').select('*').order('sort_order');
-  const body = (data || []).map((t) =>
-    `${t.emoji} <b>${esc(t.name)}</b> — من ${money(t.min_spent)} · خصم ${t.discount_pct}%`
-  ).join('\n');
-  return { text: `🪜 <b>كل المستويات</b>\n${RULE}\n${body}`,
-           kb: kb().text('« رجوع', to('tier')).build() };
-});
+  // ---------- اللغة ----------
+  'lang.title':    '🌐 <b>اللغة</b>',
+  'lang.pick':     'اختر لغة البوت:',
+  'lang.current':  'اللغة الحالية: <b>العربية</b>',
+  'lang.done':     '✅ تم تغيير اللغة إلى العربية.',
+  'lang.ar':       '🇸🇦 العربية',
+  'lang.en':       '🇬🇧 English',
 
-// ---------- طلباتي ----------
-screen('orders', async (ctx, [pageStr]) => {
-  const page = Math.max(1, Number(pageStr || 1));
-  const u = await ensureUser(ctx.from);
-  const from = (page - 1) * 5;
+  // ---------- بوابة الدخول ----------
+  'join.text':    'مرحباً بك عزيزي! 👋\n\nلكي تتمكن من استخدام البوت والحصول على الخدمات، يجب عليك الانضمام إلى مجموعتنا وقناتنا على تليجرام أولاً.\n\n👇 اضغط على الأزرار أدناه للانضمام، ثم اضغط «تحقق الآن».',
+  'join.group':   '💬 انضم للمجموعة',
+  'join.channel': '📢 انضم للقناة',
+  'join.verify':  '✅ تحقق الآن',
+  'join.missing': 'لسه ما انضممت للكل. اشترك بالمجموعة والقناة وجرّب مرة تانية.',
 
-  const { data, count } = await db.from('orders')
-    .select('external_order_id, product_name, charged_usd, status, created_at', { count: 'exact' })
-    .eq('user_id', u.id).order('created_at', { ascending: false })
-    .range(from, from + 4);
+  // ---------- الدعوات ----------
+  'inv.menu':      'اختر إحدى الخيارات أدناه للحصول على دعوات ومكافآت مجانية.',
+  'inv.btnLink':   '🔗 رابط الدعوة',
+  'inv.btnStats':  '📊 إحصائيات الدعوات',
+  'inv.btnClaim':  '💰 اصرف مكافأتي',
 
-  const pages = Math.max(1, Math.ceil((count || 0) / 5));
+  'inv.linkTitle': '<blockquote>🔗 رابط الدعوة الخاص بك:</blockquote>',
+  'inv.linkPitch': '<i>شارك هذا الرابط مع أصدقائك واربح ${reward} مقابل كل {per} أشخاص ينضمون ويفعّلون البوت بنجاح! 🎉</i>',
+  'inv.rules':     '⚠️ <b>تنبيه هام — يرجى القراءة بعناية</b>\nشارك رابط الإحالة الخاص بك بمسؤولية واتبع القواعد التالية:\n💥 بحد أقصى {daily} دعوات صالحة يومياً.\n💥 بحد أقصى {total} دعوة صالحة إجمالاً لكل حساب.\n💥 سيتم احتساب المستخدمين الحقيقيين فقط الذين ينضمون ويفعّلون البوت.\n💥 يقوم النظام تلقائياً بمراجعة جميع الإحالات واكتشاف أي نشاط مشبوه.\n\n🚫 <b>الدعوات الوهمية محظورة تماماً.</b>\nهذا يشمل على سبيل المثال لا الحصر:\n• إنشاء حسابات وهمية.\n• دعوة نفسك باستخدام حسابات متعددة.\n• استخدام أرقام وهمية أو حسابات مؤقتة.\n• استخدام البوتات أو السكربتات أو الطرق المؤتمتة.\n• أي محاولة للتلاعب أو إساءة استخدام نظام الإحالات.\n\n⚠️ إذا قمت بإضافة مستخدمين وهميين أو حاولت استغلال البرنامج، فقد يتم تمييز حسابك تلقائياً. ونتيجة لذلك:\n❌ سيتم إزالة الدعوات الوهمية.\n❌ قد يتم إلغاء المكافآت.\n❌ قد يتم تقييد وصولك لنظام الإحالات.\n❌ قد يتم حظر حسابك مؤقتاً أو نهائياً.\n\n🚫 <b>تنبيه الحظر التلقائي</b>\nإذا رُصد نشاط مشبوه قد يُحظر حسابك تلقائياً. إذا كنت تعتقد أن الحظر تم بالخطأ، تواصل مع الدعم وقدّم دليلاً يوضّح أين وكيف شاركت رابطك.\n📧 الدعم: {support}\n\nشكراً لمساعدتنا في الحفاظ على نظام إحالات عادل وآمن للجميع. 🤝',
 
-  if (!data?.length) {
-    return { text: `📋 <b>طلباتي</b>\n${RULE}\nما عندك طلبات بعد.`,
-             kb: kb().text('🛒 تصفّح المنتجات', to('providers')).row()
-                     .text('« رجوع', to('profile')).build() };
-  }
+  'inv.statsTitle': '<blockquote>📊 إحصائيات الدعوات الخاصة بك:</blockquote>',
+  'inv.stTotal':    '👥 إجمالي المسجلين: <b>{n}</b>',
+  'inv.stJoin':     '🕐 بانتظار الانضمام (المجموعة + القناة): <b>{n}</b>',
+  'inv.stHuman':    '🤖 بانتظار التحقق البشري: <b>{n}</b>',
+  'inv.stActive':   '📱 بانتظار التفاعل مع البوت: <b>{n}</b>',
+  'inv.stReady':    '✅ المؤهلون لدفعة المكافآت: <b>{n}</b>',
+  'inv.stPaid':     '🎊 الدعوات التي تم مكافأتها: <b>{n}</b>',
+  'inv.stEarned':   '🎉 إجمالي الرصيد المكتسب: <b>{amount}</b>',
+  'inv.stFoot':     '📌 كل <b>{per}</b> دعوات مؤهّلة = <b>${reward}</b>.',
 
-  const body = data.map((o) =>
-    `${statusIcon(o.status)} <b>${esc(o.product_name || '')}</b>\n` +
-    `    ${money(o.charged_usd)} · ${arDate(o.created_at)}`
-  ).join('\n\n');
+  'inv.claimOk':    '🎉 تم صرف <b>{amount}</b> عن <b>{n}</b> دعوة مؤهّلة.\nرصيدك الآن: <b>{balance}</b>',
+  'inv.claimNone':  'لسه ما وصلت للحد. بدك <b>{need}</b> دعوة مؤهّلة إضافية.',
 
-  const k = kb();
-  for (const o of data.filter((x) => x.status === 'COMPLETED')) {
-    k.text(`📄 ${trim(o.product_name)}`, to('order', o.external_order_id)).row();
-  }
-  k.pager({ page, totalPages: pages, make: (n) => to('orders', String(n)) });
-  k.text('« رجوع', to('profile'));
+  // ---------- التحقق البشري ----------
+  'hv.title':  '🤖 <b>تحقق سريع</b>\n\nاختر الرقم <b>{n}</b> من الأزرار تحت:',
+  'hv.wrong':  'غلط. جرّب مرة تانية.',
 
-  return { text: `📋 <b>طلباتي</b>\n${RULE}\n${body}`, kb: k.build() };
-});
+  // ---------- المساعدة وشحن بكود ----------
+  'policy.title': 'سياسة البوت',
+  'help.title':   'الدعم والمساعدة',
+  'vou.title':    'شحن بكود',
+  'vou.prompt':   'الرجاء إرسال كود الشحن — بانتظارك:',
+  'vou.request':  'طلب كود شحن',
 
-// ---------- تفاصيل طلب ----------
-screen('order', async (ctx, [ext]) => {
-  const u = await ensureUser(ctx.from);
-  const { data: o } = await db.from('orders')
-    .select('*').eq('external_order_id', ext).eq('user_id', u.id).maybeSingle();
-
-  if (!o) return { text: '❌ الطلب غير موجود.',
-                   kb: kb().text('« رجوع', to('orders', '1')).build() };
-
-  const text = [
-    `${statusIcon(o.status)} <b>${esc(o.product_name || '')}</b>`,
-    RULE,
-    `${E('receipt')} <code>${esc(o.gg_order_code || o.external_order_id)}</code>`,
-    `${E('money')} ${money(o.charged_usd)}`,
-    `📅 ${arTime(o.created_at)}`,
-    o.status === 'COMPLETED' && o.delivery ? `\n${renderDelivery(o.delivery)}` : null,
-    o.status === 'PENDING'  ? `\n⏳ قيد التنفيذ — رح يوصلك التسليم تلقائياً.` : null,
-    o.status === 'REFUNDED' ? `\n↩️ تم إرجاع المبلغ لرصيدك.` : null,
-    o.status === 'NEEDS_REVIEW' ? `\n🔴 قيد المراجعة — تواصل مع الدعم.` : null,
-  ].filter(Boolean).join('\n');
-
-  return { text, kb: kb().text('« رجوع', to('orders', '1')).build() };
-});
-
-// ---------- كشف المحفظة ----------
-screen('ledger', async (ctx, [pageStr]) => {
-  const page = Math.max(1, Number(pageStr || 1));
-  const u = await ensureUser(ctx.from);
-  const from = (page - 1) * 10;
-
-  const { data, count } = await db.from('ledger')
-    .select('amount, type, ref, created_at', { count: 'exact' })
-    .eq('user_id', u.id).order('created_at', { ascending: false })
-    .range(from, from + 9);
-
-  const pages = Math.max(1, Math.ceil((count || 0) / 10));
-  const label = { DEPOSIT: 'إيداع', PURCHASE: 'شراء', REFUND: 'إرجاع',
-                  REFERRAL: 'إحالة', WITHDRAW: 'سحب', ADJUST: 'تعديل' };
-
-  const body = data?.length
-    ? data.map((r) => {
-        const amt = Number(r.amount);
-        return `${amt >= 0 ? '🟢 +' : '🔴 '}${amt.toFixed(2)}$ · ${label[r.type] || r.type}\n` +
-               `    <i>${arDate(r.created_at)}</i>`;
-      }).join('\n')
-    : 'ما في حركات بعد.';
-
-  const k = kb();
-  k.pager({ page, totalPages: pages, make: (n) => to('ledger', String(n)) });
-  k.text('« رجوع', to('profile'));
-
-  return { text: `🏦 <b>كشف المحفظة</b>\n${RULE}\n${E('balance')} الرصيد: <b>${money(u.balance)}</b>\n\n${body}`,
-           kb: k.build() };
-});
-
-// شاشة «الدعوات» انتقلت لـ src/bot/referrals.js — نظام المراحل
+  // ---------- الأوامر ----------
+  'cmd.start':     'القائمة الرئيسية',
+  'cmd.menu':      'فتح القائمة',
+  'cmd.lang':      'تغيير اللغة · Change language',
+};
