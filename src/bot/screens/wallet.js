@@ -7,7 +7,7 @@ import { db, ensureUser } from '../../lib/db.js';
 import { E, T, S, Snum } from '../../lib/settings.js';
 import { esc, money, RULE, arDate, statusIcon } from '../../lib/fmt.js';
 import { ask } from '../input.js';
-import { t } from '../../lib/i18n.js';
+import { t, longText } from '../../lib/i18n.js';
 
 // ---------- شحن رصيد ----------
 // ---------- شحن بكود ----------
@@ -92,15 +92,23 @@ screen('notif', async (ctx) => {
 });
 
 // ---------- معلومات ----------
-screen('help', async () => {
-  const su = S('support_username');
-  const k = kb();
-  if (su) k.url('💬 تواصل مع الدعم', `https://t.me/${su}`).row();
-  k.text('« الرئيسية', to('home'));
-  return { text: `${E('help')} <b>الدعم والمساعدة</b>\n${RULE}\n${T('help')}`, kb: k.build() };
+// نفس تنسيق GGSoma: عنوان بوسام، اليوزر داخل النص (تلغرام بيخلّيه
+// قابل للضغط لحاله)، وزر إغلاق واحد. النص من جدول texts بمفتاحين
+// help و help_en، و{user} بينستبدل بـ support_user.
+screen('help', async (ctx) => {
+  const su   = '@' + (T('support_user', '@XBLLT') || '').replace(/^@/, '');
+  const body = longText(ctx.lang, 'help', '').replaceAll('{user}', su);
+
+  return {
+    text: `<blockquote>${E('help')} <b>${t(ctx, 'help.title')}</b></blockquote>\n\n${body}`,
+    kb: kb().text(t(ctx, 'btn.close'), to('close')).build(),
+  };
 });
 
-screen('policy', async () => ({
-  text: `${E('policy')} <b>سياسة البوت</b>\n${RULE}\n${T('policy')}`,
-  kb: kb().text('« الرئيسية', to('home')).build(),
+// النص كامل بجدول texts بمفتاحين: policy و policy_en.
+// بينتعدّل من ⚙️ ← 📝 النصوص بدون لمس الكود.
+screen('policy', async (ctx) => ({
+  text: `<blockquote>${E('policy')} <b>${t(ctx, 'policy.title')}</b></blockquote>\n\n` +
+        longText(ctx.lang, 'policy', ''),
+  kb: kb().text(t(ctx, 'btn.close'), to('close')).build(),
 }));
