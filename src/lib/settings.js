@@ -4,17 +4,18 @@
 // ============================================================
 import { db } from './db.js';
 
-let cache = { settings: {}, texts: {}, emoji: {}, tiers: [], at: 0 };
+let cache = { settings: {}, texts: {}, emoji: {}, tiers: [], margins: [], at: 0 };
 const TTL = 60_000;
 
 export async function loadAll(force = false) {
   if (!force && Date.now() - cache.at < TTL) return cache;
 
-  const [s, t, e, ti] = await Promise.all([
+  const [s, t, e, ti, mg] = await Promise.all([
     db.from('settings').select('key, value'),
     db.from('texts').select('key, content'),
     db.from('ui_emoji').select('key, fallback, custom_id'),
     db.from('tiers').select('*').order('sort_order'),
+    db.from('margin_tiers').select('*').order('sort_order'),
   ]);
 
   cache = {
@@ -22,6 +23,7 @@ export async function loadAll(force = false) {
     texts:    Object.fromEntries((t.data || []).map((r) => [r.key, r.content])),
     emoji:    Object.fromEntries((e.data || []).map((r) => [r.key, r])),
     tiers:    ti.data || [],
+    margins:  mg.data || [],
     at: Date.now(),
   };
   return cache;
@@ -38,6 +40,8 @@ export const Sbool= (k, d = false) => {
 };
 export const T = (k, d = '') => cache.texts[k] ?? d;
 export const tiers = () => cache.tiers;
+/** شرائح الهامش الثابت، مرتّبة من الأرخص للأغلى */
+export const margins = () => cache.margins;
 
 /**
  * إيموجي: بيرجع الوسم المخصص إذا البريميوم مفعّل وفي custom_id،
