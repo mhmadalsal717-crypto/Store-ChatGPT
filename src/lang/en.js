@@ -90,6 +90,33 @@ export default {
   'join.verify':  '✅ Verify now',
   'join.missing': 'You have not joined everything yet. Join the group and channel, then try again.',
 
+  // ---------- Referrals ----------
+  'inv.menu':      'Choose one of the options below to get free invites and rewards.',
+  'inv.btnLink':   '🔗 Invite link',
+  'inv.btnStats':  '📊 Invite stats',
+  'inv.btnClaim':  '💰 Claim my reward',
+
+  'inv.linkTitle': '<blockquote>🔗 Your invite link:</blockquote>',
+  'inv.linkPitch': '<i>Share this link with your friends and earn ${reward} for every {per} people who join and activate the bot! 🎉</i>',
+  'inv.rules':     '⚠️ <b>Important — please read carefully</b>\nShare your referral link responsibly and follow these rules:\n💥 Up to {daily} valid invites per day.\n💥 Up to {total} valid invites per account in total.\n💥 Only real users who join and activate the bot are counted.\n💥 The system automatically reviews all referrals and detects suspicious activity.\n\n🚫 <b>Fake invites are strictly forbidden.</b>\nThis includes but is not limited to:\n• Creating fake accounts.\n• Inviting yourself using multiple accounts.\n• Using fake numbers or temporary accounts.\n• Using bots, scripts or automated methods.\n• Any attempt to manipulate or abuse the referral system.\n\n⚠️ If you add fake users or try to exploit the program, your account may be flagged automatically. As a result:\n❌ Fake invites will be removed.\n❌ Rewards may be cancelled.\n❌ Your access to referrals may be restricted.\n❌ Your account may be banned temporarily or permanently.\n\n🚫 <b>Automatic ban notice</b>\nIf suspicious activity is detected your account may be banned automatically. If you believe this was a mistake, contact support with proof of where and how you shared your link.\n📧 Support: {support}\n\nThank you for helping us keep referrals fair and safe for everyone. 🤝',
+
+  'inv.statsTitle': '<blockquote>📊 Your referral stats:</blockquote>',
+  'inv.stTotal':    '👥 Total registered: <b>{n}</b>',
+  'inv.stJoin':     '🕐 Awaiting join (group + channel): <b>{n}</b>',
+  'inv.stHuman':    '🤖 Awaiting human verification: <b>{n}</b>',
+  'inv.stActive':   '📱 Awaiting bot interaction: <b>{n}</b>',
+  'inv.stReady':    '✅ Eligible for payout: <b>{n}</b>',
+  'inv.stPaid':     '🎊 Invites already rewarded: <b>{n}</b>',
+  'inv.stEarned':   '🎉 Total earned: <b>{amount}</b>',
+  'inv.stFoot':     '📌 Every <b>{per}</b> eligible invites = <b>${reward}</b>.',
+
+  'inv.claimOk':    '🎉 Paid <b>{amount}</b> for <b>{n}</b> eligible invites.\nYour balance is now <b>{balance}</b>',
+  'inv.claimNone':  'Not there yet. You need <b>{need}</b> more eligible invites.',
+
+  // ---------- Human check ----------
+  'hv.title':  '🤖 <b>Quick check</b>\n\nTap the number <b>{n}</b> below:',
+  'hv.wrong':  'Wrong. Try again.',
+
   // ---------- Bot commands ----------
   'cmd.start':     'Main menu',
   'cmd.menu':      'Open menu',
