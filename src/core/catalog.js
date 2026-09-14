@@ -304,6 +304,17 @@ export async function listAvailable() {
   return data || [];
 }
 
+/**
+ * مفاتيح المزوّدين يلي عندهم منتج واحد متوفّر على الأقل.
+ * استعلام عمود واحد لكل الكتالوج — أرخص من count لكل مزوّد.
+ */
+export async function stockedProviders() {
+  const { data } = await db.from('products').select('provider_key')
+    .eq('visible', true).eq('paused', false).eq('in_stock', true)
+    .is('deleted_at', null);
+  return new Set((data || []).map((r) => r.provider_key));
+}
+
 /** كل المزوّدين بما فيهم المخفيين — للوحة التحكم */
 export async function listAllProviders() {
   const { data } = await db.from('providers')
