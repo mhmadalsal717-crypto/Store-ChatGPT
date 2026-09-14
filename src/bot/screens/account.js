@@ -4,7 +4,8 @@
 import { screen, to } from '../nav.js';
 import { kb } from '../kb.js';
 import { db, ensureUser } from '../../lib/db.js';
-import { E, Snum } from '../../lib/settings.js';
+import { E, T, Snum } from '../../lib/settings.js';
+import { t } from '../../lib/i18n.js';
 import { esc, money, RULE, bar, arDate, arTime, statusIcon, trim } from '../../lib/fmt.js';
 import { tierOf, nextTier } from '../../core/pricing.js';
 import { renderDelivery } from '../delivery.js';
