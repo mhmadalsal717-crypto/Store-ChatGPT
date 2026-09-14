@@ -6,7 +6,7 @@ import { kb, stockStyle } from '../kb.js';
 import { ensureUser } from '../../lib/db.js';
 import { E, Snum, Sbool } from '../../lib/settings.js';
 import { esc, money, RULE, quote, deliveryLabel } from '../../lib/fmt.js';
-import { listProviders, listProducts, getProduct, listAvailable, provName,
+import { listProviders, listProducts, getProduct, listAvailable, provName, stockedProviders,
          productDesc, productInstr } from '../../core/catalog.js';
 import { clip } from '../../lib/html.js';
 import { welcomeText, t } from '../../lib/i18n.js';
@@ -27,7 +27,7 @@ screen('providers', async (ctx) => {
   // فتح المنتجات = تفاعل حقيقي. هون بينحسب المدعو لمُحيله.
   markActive(await ensureUser(ctx.from)).catch(() => {});
 
-  const provs = await listProviders();
+  const [provs, stocked] = await Promise.all([listProviders(), stockedProviders()]);
   if (!provs.length) {
     return { text: t(ctx, 'shop.empty'),
              kb: kb().text(t(ctx, 'btn.close'), to('close')).build() };
@@ -45,10 +45,13 @@ screen('providers', async (ctx) => {
   const flush = () => { if (pair.length) { pair.forEach((b) => k.add(b)); k.row(); pair = []; } };
 
   for (const p of provs) {
+    // أخضر = عنده مخزون متوفّر، أحمر = كله نافد.
+    // الزبون بيعرف من الواجهة وين يفوت بدون ما يجرّب وحدة وحدة.
     const btn = {
-      text: `${p.emoji || ''} ${provName(p)}`.trim(),
-      data: to('plans', p.key, '1'),
-      icon: p.custom_emoji_id || undefined,
+      text:  `${p.emoji || ''} ${provName(p)}`.trim(),
+      data:  to('plans', p.key, '1'),
+      icon:  p.custom_emoji_id || undefined,
+      style: stocked.has(p.key) ? 'success' : 'danger',
     };
     if (p.full_width) { flush(); k.add(btn); k.row(); }
     else { pair.push(btn); if (pair.length === 2) flush(); }
