@@ -118,9 +118,8 @@ export default {
   'hv.wrong':  'Wrong. Try again.',
 
   // ---------- Support & voucher ----------
+  'policy.title': 'Bot policy',
   'help.title':   'Support & help',
-  'help.body':    '📩 If you need help, please contact customer service: {user}\n\n⏳ Your request will be answered once it has been read.',
-  'help.contact': 'Contact support',
   'vou.title':    'Redeem code',
   'vou.prompt':   'Please send your top-up code — waiting for you:',
   'vou.request':  'Request a code',
