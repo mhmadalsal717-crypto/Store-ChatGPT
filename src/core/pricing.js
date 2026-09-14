@@ -64,7 +64,12 @@ export function basePrice(cost, markupPct) {
     ? c + flatAdd(c)
     : c * (1 + Number(markupPct) / 100);
 
-  if (Sbool('margin_after_discount', false)) {
+  // ⚠️ رفع السعر مسبقاً لتعويض خصم المستوى بيخرّب دقة الهامش الثابت:
+  //    تكلفة 1.00$ + ربح 1.00$ = 2.00$، بس مقسومة على 0.95 بتطلع 2.11$.
+  // بوضع flat منخلّي السعر المعروض دقيق، ومنحمي الربح من الجهة
+  // التانية: أرضية بـ finalPrice ما بتخلّي الخصم ينزل تحت
+  //    التكلفة + أدنى ربح. نفس الحماية بدون تشويه السعر.
+  if (!flatMode() && Sbool('margin_after_discount', false)) {
     const d = maxTierDiscount();
     if (d > 0 && d < 100) raw = raw / (1 - d / 100);
   }
@@ -106,9 +111,21 @@ export function nextTier(totalSpent) {
 /** السعر النهائي للزبون بعد خصم مستواه */
 export function finalPrice(product, user) {
   const base = listPrice(product);
-  const t = tierOf(user?.total_spent);
+  const t    = tierOf(user?.total_spent);
   const disc = t ? Number(t.discount_pct) : 0;
-  return disc ? round2(base * (1 - disc / 100)) : round2(base);
+  if (!disc) return round2(base);
+
+  const out  = round2(base * (1 - disc / 100));
+  const cost = Number(product?.cost_price) || 0;
+
+  // بوضع flat: الخصم ما بينزل تحت التكلفة + أدنى ربح.
+  // هيك زبون الماسي بياخد خصمه بس ما بتخسر أنت، وبنفس الوقت
+  // السعر المعروض بيضل «التكلفة + الشريحة» بالضبط.
+  if (flatMode() && cost > 0) {
+    const floor = round2(cost + Snum('min_margin_usd', 0.5));
+    return Math.max(out, Math.min(floor, base));
+  }
+  return out;
 }
 
 /** تفصيل الهامش لمنتج — مستعمل بلوحة التحكم والحارس */
