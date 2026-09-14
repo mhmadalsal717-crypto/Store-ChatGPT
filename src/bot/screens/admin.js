@@ -5,8 +5,8 @@ import { screen, to, go } from '../nav.js';
 import { kb } from '../kb.js';
 import { db, rpc } from '../../lib/db.js';
 import { esc, money, RULE, arDate, statusIcon, trim } from '../../lib/fmt.js';
-import { loadAll, invalidate, S, T, Sbool, setSetting } from '../../lib/settings.js';
-import { listPrice } from '../../core/pricing.js';
+import { loadAll, invalidate, S, T, Sbool, Snum, setSetting, margins } from '../../lib/settings.js';
+import { listPrice, flatMode } from '../../core/pricing.js';
 import { listAllProviders } from '../../core/catalog.js';
 import { ask } from '../input.js';
 import { isAdmin } from '../../config.js';
@@ -45,6 +45,7 @@ screen('admin', async (ctx) => {
     .text('⚙️ النظام', to('a_set', 'النظام')).text('💳 الدفع', to('a_set', 'الدفع')).row()
     .text('📝 النصوص', to('a_texts')).text('😀 الإيموجي', to('a_emoji')).row()
     .text('🗂 المزوّدين', to('a_provs')).text('🚪 البوابة', to('a_gate')).row()
+    .text('💵 شرائح الهامش', to('a_margins')).row()
     .text('📦 المنتجات', to('a_prods', '1')).row()
     .text(`📤 السحوبات${badge(wd.count)}`, to('a_wds')).row()
     .text(`⏳ الطلبات العالقة${badge(stuck.count)}`, to('a_stuck')).row()
@@ -828,4 +829,42 @@ screen('a_gate_set', async (ctx, [key]) => {
       : `أرسل الرابط، مثل <code>https://t.me/yourgroup</code>\n\nأرسل <code>-</code> للحذف.`,
     kb: kb().text('« إلغاء', to('a_gate')).build(),
   };
+});
+
+
+// ============================================================
+//  شرائح الهامش الثابت
+// ============================================================
+screen('a_margins', async (ctx) => {
+  if (!isAdmin(ctx.from.id)) return { text: '⛔️', kb: kb().build() };
+
+  const list = margins();
+  const flat = flatMode();
+
+  const rows = list.map((m, i) => {
+    const from = i === 0 ? '0.00' : Number(list[i - 1].up_to).toFixed(2);
+    const to   = m.up_to == null ? '∞' : Number(m.up_to).toFixed(2);
+    return `${i + 1}. تكلفة <b>${from}$ – ${to}$</b> ← ربح <b>+${Number(m.add_usd).toFixed(2)}$</b>`;
+  });
+
+  return {
+    text: `💵 <b>شرائح الهامش</b>\n${RULE}\n` +
+          `الوضع: <b>${flat ? '🟢 هامش ثابت بالدولار' : '🔵 نسبة مئوية'}</b>\n\n` +
+          (flat ? rows.join('\n') : `الهامش العام: <b>${Snum('markup_pct', 40)}%</b>`) +
+          `\n\n<i>سعرك = التكلفة + ربح الشريحة. التكلفة بتنقرأ من GGSoma\n` +
+          `كل دقيقة، فالسعر بيتحرّك لوحده لو غيّروا تكلفتهم.</i>\n\n` +
+          `<i>للتعديل: الإعدادات ← التسعير، أو جدول margin_tiers بقاعدة البيانات.</i>`,
+    kb: kb()
+      .text(flat ? '🔵 حوّل لنسبة مئوية' : '🟢 حوّل لهامش ثابت', to('a_mm_tog')).row()
+      .text('« رجوع', to('admin'))
+      .build(),
+  };
+});
+
+screen('a_mm_tog', async (ctx) => {
+  if (!isAdmin(ctx.from.id)) return { text: '⛔️', kb: kb().build() };
+  await setSetting('margin_mode', flatMode() ? 'percent' : 'flat');
+  invalidate();
+  await loadAll(true);
+  return go(ctx, 'a_margins');
 });
