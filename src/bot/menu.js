@@ -45,8 +45,11 @@ for (const [key, screenName] of ITEMS) {
  * persistent = تضل ظاهرة وما تنطوي
  */
 export function mainMenu(tgId, lang = 'ar') {
-  const k = new Keyboard()
-    .text(t(lang, 'menu.products')).row()
+  // ⚠️ grammy's Keyboard.text ما بتمرّر style، فمنضيف الزر ككائن خام.
+  //    Bot API 9.4 بيدعم style على KeyboardButton كمان مو بس Inline.
+  const k = new Keyboard();
+  k.add({ text: t(lang, 'menu.products'), style: 'success' });
+  k.row()
     .text(t(lang, 'menu.profile')).text(t(lang, 'menu.invites')).row()
     .text(t(lang, 'menu.voucher')).text(t(lang, 'menu.topup')).row()
     .text(t(lang, 'menu.help')).text(t(lang, 'menu.policy')).row();
