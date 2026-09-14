@@ -1,15 +1,26 @@
 // ============================================================
-//  التسعير — هامش ثابت بالنسبة، متحرّك بالقيمة
+//  التسعير
 //
-//  القاعدة: سعرك = تكلفتك × (1 + الهامش)
-//  التكلفة بتنقرأ من GGSoma كل مزامنة، فالسعر بيتحرّك معها تلقائياً.
-//    تكلفة 2.00$ بهامش 40% → 2.80$
-//    نزلت لـ 1.00$        → 1.40$   (بدون أي تدخّل منك)
+//  وضعين، بينتبدّلوا من إعداد margin_mode:
 //
-//  الشي الوحيد يلي بيكسر التتبّع التلقائي هو السعر اليدوي
-//  (price_override). لما تحطه، المنتج بيوقف عن متابعة التكلفة.
+//  flat (الافتراضي) — مبلغ ثابت بالدولار حسب شريحة التكلفة:
+//      تكلفة أقل من 15$  ← +1.00$
+//      من 15$ لـ 25$     ← +1.50$
+//      فوق 25$           ← +2.00$
+//    الشرائح بجدول margin_tiers وبتتعدّل من لوحة التحكم.
+//
+//  percent — الطريقة القديمة: تكلفتك × (1 + الهامش%)
+//
+//  ── تتبّع التكلفة ──
+//  التكلفة بتنقرأ من GGSoma كل مزامنة والسعر بينحسب من جديد،
+//  فبيتحرّك لوحده بالاتجاهين:
+//      تكلفة 2.00$ ← بيعك 3.00$
+//      ارتفعت 3.00$ ← بيعك 4.00$
+//      نزلت  1.50$ ← بيعك 2.50$
+//  الشي الوحيد يلي بيكسر التتبّع هو السعر اليدوي (price_override):
+//  لما تحطه، المنتج بيوقف عن متابعة التكلفة لحد ما تشيله.
 // ============================================================
-import { Snum, Sbool, tiers } from '../lib/settings.js';
+import { S as Sraw, Snum, Sbool, tiers, margins } from '../lib/settings.js';
 
 export const round2 = (n) => Math.round(Number(n) * 100) / 100;
 
@@ -24,12 +35,34 @@ export const maxTierDiscount = () =>
  * بيضل 40% حتى للزبون صاحب أعلى مستوى. بدونه، خصم المستوى
  * بياكل من هامشك.
  */
+/**
+ * المبلغ المضاف حسب شريحة التكلفة.
+ *
+ * up_to شامل: «حتى 14.99$» يعني 14.99 داخلة. هيك 15.00 بالضبط
+ * بتوقع بالشريحة التانية و25.00 بالضبط بتضل فيها — يلي هو
+ * المطلوب: أقل من 15 ← +1، من 15 لـ 25 ← +1.5، فوق 25 ← +2.
+ *
+ * الشريحة الأخيرة up_to = null يعني «كل ما فوق».
+ */
+export function flatAdd(cost) {
+  const c = Number(cost) || 0;
+  const list = margins();
+  if (!list.length) return Snum('flat_add_default', 1);
+
+  for (const m of list) {
+    if (m.up_to == null || c <= Number(m.up_to)) return Number(m.add_usd) || 0;
+  }
+  return Number(list[list.length - 1].add_usd) || 0;
+}
+
 export function basePrice(cost, markupPct) {
-  const step = Snum('round_to', 0.25) || 0.01;
+  const step = Snum('round_to', 0) || 0.01;
   const floor = Snum('min_price', 0);
   const c = Number(cost) || 0;
 
-  let raw = c * (1 + Number(markupPct) / 100);
+  let raw = flatMode()
+    ? c + flatAdd(c)
+    : c * (1 + Number(markupPct) / 100);
 
   if (Sbool('margin_after_discount', false)) {
     const d = maxTierDiscount();
@@ -39,6 +72,10 @@ export function basePrice(cost, markupPct) {
   const rounded = step > 0 ? Math.ceil(raw / step) * step : raw;
   return round2(Math.max(rounded, floor));
 }
+
+/** الهامش الفعّال لمنتج: الخاص فيه أو العام */
+/** وضع الهامش الحالي — flat افتراضياً */
+export const flatMode = () => String(Sraw('margin_mode', 'flat')) !== 'percent';
 
 /** الهامش الفعّال لمنتج: الخاص فيه أو العام */
 export const effMarkup = (p) =>
