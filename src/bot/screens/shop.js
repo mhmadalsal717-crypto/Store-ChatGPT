@@ -10,6 +10,7 @@ import { listProviders, listProducts, getProduct, listAvailable, provName,
          productDesc, productInstr } from '../../core/catalog.js';
 import { clip } from '../../lib/html.js';
 import { welcomeText, t } from '../../lib/i18n.js';
+import { markActive } from '../referrals.js';
 import { finalPrice, listPrice } from '../../core/pricing.js';
 import { isAdmin } from '../../config.js';
 
@@ -23,6 +24,9 @@ screen('home', async (ctx) => {
 
 // ---------- المزوّدين ----------
 screen('providers', async (ctx) => {
+  // فتح المنتجات = تفاعل حقيقي. هون بينحسب المدعو لمُحيله.
+  markActive(await ensureUser(ctx.from)).catch(() => {});
+
   const provs = await listProviders();
   if (!provs.length) {
     return { text: t(ctx, 'shop.empty'),
